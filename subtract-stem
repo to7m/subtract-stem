@@ -424,14 +424,18 @@ class StemInMixCalculator:
         smoothed_eqd = smoothed_eqd_complex.real
 
         beginning_fade = smoothed_eqd[:self.fade_len]
-        eqd_complex \
-            = smoothed_eqd_complex[self.half_fade_len:-self.half_fade_len]
+        eqd_complex = smoothed_eqd_complex[
+            self.half_fade_len:self.smoothed_len - self.half_fade_len
+        ]
         end_fade_reversed = smoothed_eqd[:-self.fade_len - 1:-1]
 
         beginning_outer_fade = smoothed_eqd[:self.half_fade_len]
         beginning_inner_fade = smoothed_eqd[self.half_fade_len:self.fade_len]
-        end_inner_fade = smoothed_eqd[-self.fade_len:-self.half_fade_len]
-        end_outer_fade = smoothed_eqd[-self.half_fade_len:]
+        end_inner_fade = smoothed_eqd[
+            self.smoothed_len - self.fade_len
+            :self.smoothed_len - self.half_fade_len
+        ]
+        end_outer_fade = smoothed_eqd[self.smoothed_len - self.half_fade_len:]
 
         return (
             smoothed_eqd,
@@ -481,8 +485,9 @@ class StemInMixCalculator:
 
             yield i, num_of_transforms
 
-        self.stem_in_mix_audio \
-            = stem_in_mix_audio[self.margin_before:-self.margin_after]
+        self.stem_in_mix_audio = stem_in_mix_audio[
+            self.margin_before:self.total_len - self.margin_after
+        ]
 
     def run(self):
         for _ in self.run_gen():
