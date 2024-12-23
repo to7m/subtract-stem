@@ -1,10 +1,16 @@
 #!.venv_for_python3.12.7/bin/python
 
 
+import sys
 from pathlib import Path
 from math import ceil, pi, tau
 import numpy as np
 from fractions import Fraction
+import soundfile
+import librosa
+
+
+import warnings; warnings.filterwarnings("error", category=RuntimeWarning)
 
 
 DEFAULT_TRANSFORM_LEN = 780
@@ -83,6 +89,8 @@ class PreAudioData:
 
         if max_amplification <= 0:
             raise ValueError("max_amplification must be greater than 0")
+        
+        return max_amplification
 
     def _get_fade_in_curve(self):
         phase = (
@@ -104,22 +112,25 @@ class AudioData:
         profile_start=None, profile_stop=None,
         out_start=None, out_stop=None
     ):
-        self.mix_audio, self.sample_rate = librosa.read(mix_path, sr=None)
-        self.stem_audio, _ = librosa.read(stem_path, sr=self.sample_rate)
+        self.mix_audio, self.sample_rate = librosa.load(mix_path, sr=None)
+        self.stem_audio, _ = librosa.load(stem_path, sr=self.sample_rate)
         self.delay_stem_samples_whole, self.delay_stem_samples_remainder \
             = self._handle_delay_stem(delay_stem)
         (
             self.profile_start_sample, self.profile_stop_sample,
             self.out_start_sample, self.out_stop_sample
         ) = self._handle_timestamps(
-            profile_start, profile_stop, out_start, out_stop
+            profile_start=profile_start, profile_stop=profile_stop,
+            out_start=out_start, out_stop=out_stop
         )
 
     def _handle_delay_stem(self, delay_stem):
         delay_stem_samples = parse_timestamp(delay_stem) * self.sample_rate
         return whole_and_remainder(delay_stem_samples)
 
-    def _handle_timestamps(self):
+    def _handle_timestamps(
+        self, *, profile_start, profile_stop, out_start, out_stop
+    ):
         mix_audio_dur = Fraction(len(self.mix_audio), self.sample_rate)
 
         for timestamp in [
@@ -131,7 +142,7 @@ class AudioData:
             yield round(timestamp * self.sample_rate)
 
 
-def make_hann_window(size, samples_early):
+def make_hann_window(size, samples_early=0):
     phase = (np.arange(size, dtype=np.float32) + samples_early) * (tau / size)
     window = (1 - np.cos(phase)) / 2
 
@@ -150,22 +161,30 @@ class GenerateBins:
         self.window = window
 
     def __iter__(self):
-        windowed = np.empty(transform_len, dtype=np.float32)
-        bins = np.empty(len(self.window), dtype=np.complex64)
+        # put objects directly into namespace for efficiency
+        interval = self.interval
+        window = self.window
+        window_len = len(window)
+        audio = self.audio
+        audio_len = len(audio)
+        start_i = self.start_i
+
+        windowed = np.empty(window_len, dtype=np.float32)
+        bins = np.empty(window_len, dtype=np.complex64)
         for transform_i in range(self.num_to_generate):
-            start_i = self.start_i + transform_i * self.interval
-            stop_i = start_i + len(self.window)
+            start_i = start_i + transform_i * interval
+            stop_i = start_i + window_len
 
             empty_before_len = max(-start_i, 0)
-            empty_after_len = max(stop_i - len(self.audio), 0)
+            empty_after_len = max(stop_i - audio_len, 0)
 
-            self.windowed[:empty_before_len] = 0
+            windowed[:empty_before_len] = 0
             np.multiply(
-                self.audio[max(start_i, 0):min(stop_i, len(window))],
-                self.window[empty_before_len:-empty_after_len],
+                audio[max(start_i, 0):min(stop_i, window_len)],
+                window[empty_before_len:-empty_after_len],
                 out=windowed[empty_before_len:-empty_after_len]
             )
-            windowed[-empty_after_len] = 0
+            windowed[-empty_after_len:] = 0
 
             np.fft.fft(windowed, out=bins)
 
@@ -175,10 +194,11 @@ class GenerateBins:
 def ataabtrnfatbaa(a, b, *, out_a=None, out_b=None):
     """Apply to 'a' and 'b' the rotation needed for 'a' to become abs(a)."""
 
-    np.angle(a, out=out_a)
-    np.power(ONE_ROTATED_CONJUGATED, out_a, out=out_b)
-    out_b *= b
     np.abs(a, out=out_a)
+
+    phase = np.angle(a)
+    np.power(ONE_ROTATED_CONJUGATED, phase, out=out_b)
+    out_b *= b
 
     return out_a, out_b
 
@@ -187,6 +207,7 @@ class EqProfileCalculator:
     def __init__(self, *, pre_audio_data, audio_data, stem_window, mix_window):
         self.weighting_exponent = pre_audio_data.weighting_exponent
         self.max_amplification = pre_audio_data.max_amplification
+        self.interval = pre_audio_data.interval
         self.mix_window = mix_window
 
         (
@@ -198,14 +219,14 @@ class EqProfileCalculator:
             audio_data.stem_audio,
             start_i=stem_transforms_start_i,
             num_to_generate=self.num_of_iterations,
-            interval=pre_audio_data.interval,
+            interval=self.interval,
             window=stem_window
         )
         self.generate_mix_bins = GenerateBins(
             audio_data.mix_audio,
             start_i=mix_transforms_start_i,
             num_to_generate=self.num_of_iterations,
-            interval=pre_audio_data.interval,
+            interval=self.interval,
             window=stem_window
         )
 
@@ -216,7 +237,7 @@ class EqProfileCalculator:
             = audio_data.out_start_sample - len(self.mix_window) / 4
 
         result_len = audio_data.out_stop_sample - audio_data.out_start_sample
-        len_after_first_transform = result_len - len(self.window) // 2
+        len_after_first_transform = result_len - len(self.mix_window) // 2
         ideal_num_of_subsequent_transforms \
             = len_after_first_transform / self.interval
         subsequent_num_of_transforms \
@@ -229,7 +250,7 @@ class EqProfileCalculator:
             - subsequent_num_of_transforms * self.interval / 2
         )
         mix_transforms_start_i \
-            = round(centre_of_first_transform - len(self.window) // 2)
+            = round(centre_of_first_transform - len(self.mix_window) // 2)
 
         stem_transforms_start_i \
             = mix_transforms_start_i - audio_data.delay_stem_samples_whole
@@ -264,7 +285,7 @@ class EqProfileCalculator:
                 for i in range(1, num_of_missing + 1):
                     a[first - 1 + i] = before_val + i * gradient
 
-    def _interpolate_missing(a, is_present_arr, as_phase=False):
+    def _interpolate_missing(self, a, is_present_arr, as_phase=False):
         first = last = None
 
         for i, is_present in enumerate(is_present_arr):
@@ -282,9 +303,7 @@ class EqProfileCalculator:
             self._interpolate_section(a, first, last, as_phase=as_phase)
 
     def _ensure_amplification_limit(
-        self, *,
-        abs_stem_bins_sum=abs_stem_bins_sum,
-        rotated_mix_bins_sum=rotated_mix_bins_sum,
+        self, *, abs_stem_bins_sum, rotated_mix_bins_sum
     ):
         abs_mix_bins_sum = np.abs(rotated_mix_bins_sum)
         rotation = np.angle(rotated_mix_bins_sum)
@@ -337,7 +356,7 @@ class EqProfileCalculator:
             rotated_mix_bins_sum=rotated_mix_bins_sum
         )
 
-       self.eq_profile = rotated_mix_bins_sum / abs_stems_bins_sum
+        self.eq_profile = rotated_mix_bins_sum / abs_stem_bins_sum
 
     def run(self):
         for _ in self.run_gen():
@@ -374,10 +393,10 @@ class StemInMixCalculator:
 
     def _calculate_alignments(self, audio_data):
         result_len = audio_data.out_stop_sample - audio_data.out_start_sample
-        min_margin = self.interval - self.smoothed_len
+        min_margin = self.smoothed_len - self.interval
         min_total_len = result_len + 2 * min_margin
         num_of_subsequent_transforms \
-            = (min_total_len - self.smoothed_len - 1) // self.interval
+            = (min_total_len - self.smoothed_len - 1) // self.interval + 1
         total_len \
             = self.smoothed_len + num_of_subsequent_transforms * self.interval
 
@@ -386,14 +405,14 @@ class StemInMixCalculator:
         num_of_transforms = num_of_subsequent_transforms + 1
 
         stem_transforms_start_i = (
-            out_start_sample - margin_before + self.half_fade_len
+            audio_data.out_start_sample - margin_before + self.half_fade_len
             - audio_data.delay_stem_samples_whole
         )
 
         return (
             margin_before, result_len, margin_after, total_len,
-            num_of_transforms
-            stem_transforms_start_i,
+            num_of_transforms,
+            stem_transforms_start_i
         )
 
     def _get_intermediate_views(self):
@@ -419,14 +438,14 @@ class StemInMixCalculator:
             end_inner_fade, end_outer_fade
         )
 
-    def run_gen():
+    def run_gen(self):
         # put objects directly into namespace for efficiency
         (
             smoothed_eqd,
             beginning_fade, eqd_complex, end_fade_reversed,
             beginning_outer_fade, beginning_inner_fade,
             end_inner_fade, end_outer_fade
-        ) = self._get_intermediate_views
+        ) = self._get_intermediate_views()
         num_of_transforms = self.num_of_transforms
         interval = self.interval
         eq_profile = self.eq_profile
@@ -436,7 +455,7 @@ class StemInMixCalculator:
         stem_in_mix_audio = np.zeros(self.total_len, dtype=np.float32)
 
         for i, stem_bins in enumerate(
-            GenBins(
+            GenerateBins(
                 self.stem_audio,
                 start_i=self.stem_transforms_start_i,
                 num_to_generate=num_of_transforms,
@@ -454,7 +473,8 @@ class StemInMixCalculator:
             end_fade_reversed *= fade_in_curve
 
             start_i = i * interval
-            stop_i = i + smoothed_len
+            stop_i = start_i + smoothed_len
+
             stem_in_mix_audio[start_i:stop_i] += smoothed_eqd
 
             yield i, num_of_transforms
@@ -488,6 +508,7 @@ def subtract_stem(
     weighting_exponent=DEFAULT_WEIGHTING_EXPONENT,
     max_amplification=DEFAULT_MAX_AMPLIFICATION
 ):
+    print("handling pre-audio arguments")
     pre_audio_data = PreAudioData(
         transform_len=transform_len,
         smoothing_len=smoothing_len,
@@ -495,6 +516,7 @@ def subtract_stem(
         max_amplification=max_amplification
     )
 
+    print("loading audio files")
     audio_data = AudioData(
         stem_path, mix_path,
         delay_stem=delay_stem,
@@ -502,36 +524,41 @@ def subtract_stem(
         out_start=out_start, out_stop=out_stop
     )
 
+    print("making Hann windows")
     stem_window = make_hann_window(
         pre_audio_data.transform_len,
         samples_early=audio_data.delay_stem_samples_remainder
     )
     mix_window = make_hann_window(pre_audio_data.transform_len)
 
+    print("calculating EQ profile")
     eq_profile = EqProfileCalculator(
         pre_audio_data=pre_audio_data, audio_data=audio_data,
         stem_window=stem_window, mix_window=mix_window
     ).run()
 
+    print("making stem-in-mix audio")
     stem_in_mix_audio = StemInMixCalculator(
         interval=pre_audio_data.interval,
         fade_in_curve=pre_audio_data.fade_in_curve,
-        audio_data, stem_window, eq_profile
+        audio_data=audio_data, stem_window=stem_window, eq_profile=eq_profile
     ).run()
 
+    print("subtracting stem-in-mix audio from mix audio")
     mix_minus_stem_audio = get_mix_minus_stem(
         audio_data.mix_audio, stem_in_mix_audio,
-        out_start_samples=audio_data.out_start_sample
+        out_start_sample=audio_data.out_start_sample
     )
 
+    print("writing mix-minus-stem audio to file")
     soundfile.write(
-        self.out_path, self.mix_minus_stem_audio, self.sample_rate
+        out_path, mix_minus_stem_audio, audio_data.sample_rate
     )
 
 
 if __name__ == "__main__":
     kwargs = {}
-    for flag, arg in zip(sys.argv[4::2], sys.argv[5::2]:
+    for flag, arg in zip(sys.argv[4::2], sys.argv[5::2]):
         if not flag.startswith("--"):
             raise Exception("invalid flag")
 
@@ -539,5 +566,6 @@ if __name__ == "__main__":
         kwargs[key] = arg
 
     subtract_stem(
-        stem_path=sys.argv[1], mix_path=sys.argv[2], out_path=sys.argv[3]
+        stem_path=sys.argv[1], mix_path=sys.argv[2], out_path=sys.argv[3],
+        **kwargs
     )
