@@ -79,6 +79,8 @@ class PreAudioData:
                 "smoothing_len should not be greater than transform_len"
             )
 
+        return max(smoothing_len, 1.0)
+
         return smoothing_len
 
     def _sanitise_weighting_exponent(self, weighting_exponent):
