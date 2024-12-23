@@ -1,0 +1,6 @@
+python (tested with 3.12.7)
+
+python packages:
+    librosa
+    numpy
+    soundfile
