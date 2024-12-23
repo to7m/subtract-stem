@@ -535,7 +535,8 @@ if __name__ == "__main__":
         if not flag.startswith("--"):
             raise Exception("invalid flag")
 
-        kwargs[flag[2:]] = arg
+        key = flag[2:].replace('-', '_')
+        kwargs[key] = arg
 
     subtract_stem(
         stem_path=sys.argv[1], mix_path=sys.argv[2], out_path=sys.argv[3]
