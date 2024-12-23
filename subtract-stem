@@ -40,10 +40,16 @@ class PreAudioData:
     def __init__(
         self, *,
         transform_len=DEFAULT_TRANSFORM_LEN,
-        smoothing_len=DEFAULT_SMOOTHING_LEN
+        smoothing_len=DEFAULT_SMOOTHING_LEN,
+        weighting_exponent=DEFAULT_WEIGHTING_EXPONENT,
+        max_amplification=DEFAULT_MAX_AMPLIFICATION
     ):
         self.transform_len = self._sanitise_transform_len(transform_len)
         self.smoothing_len = self._sanitise_smoothing_len(smoothing_len)
+        self.weighting_exponent \
+            = self._sanitise_weighting_exponent(weighting_exponent)
+        self.max_amplification \
+            = self._sanitise_max_amplification(max_amplification)
 
         self.interval = self.transform_len // 2
         self.half_fade_len = ceil(self.smoothing_len) // 2
@@ -68,6 +74,15 @@ class PreAudioData:
             )
 
         return smoothing_len
+
+    def _sanitise_weighting_exponent(self, weighting_exponent):
+        return float(weighting_exponent)
+
+    def _sanitise_max_amplification(self, max_amplification):
+        max_amplification = float(max_amplification)
+
+        if max_amplification <= 0:
+            raise ValueError("max_amplification must be greater than 0")
 
     def _get_fade_in_curve(self):
         phase = (
@@ -169,9 +184,9 @@ def ataabtrnfatbaa(a, b, *, out_a=None, out_b=None):
 
 
 class EqProfileCalculator:
-    def __init__(self, *, weighting_exponent, max_amplification, interval, audio_data, stem_window, mix_window):
-        self.weighting_exponent = weighting_exponent
-        self.max_amplification = max_amplification
+    def __init__(self, *, pre_audio_data, audio_data, stem_window, mix_window):
+        self.weighting_exponent = pre_audio_data.weighting_exponent
+        self.max_amplification = pre_audio_data.max_amplification
         self.mix_window = mix_window
 
         (
@@ -183,14 +198,14 @@ class EqProfileCalculator:
             audio_data.stem_audio,
             start_i=stem_transforms_start_i,
             num_to_generate=self.num_of_iterations,
-            interval=interval,
+            interval=pre_audio_data.interval,
             window=stem_window
         )
         self.generate_mix_bins = GenerateBins(
             audio_data.mix_audio,
             start_i=mix_transforms_start_i,
             num_to_generate=self.num_of_iterations,
-            interval=interval,
+            interval=pre_audio_data.interval,
             window=stem_window
         )
 
@@ -475,7 +490,9 @@ def subtract_stem(
 ):
     pre_audio_data = PreAudioData(
         transform_len=transform_len,
-        smoothing_len=smoothing_len
+        smoothing_len=smoothing_len,
+        weighting_exponent=weighting_exponent,
+        max_amplification=max_amplification
     )
 
     audio_data = AudioData(
@@ -492,9 +509,8 @@ def subtract_stem(
     mix_window = make_hann_window(pre_audio_data.transform_len)
 
     eq_profile = EqProfileCalculator(
-        weighting_exponent=weighting_exponent,
-        max_amplification=max_amplification,
-        interval=pre_audio_data.interval, audio_data, stem_window, mix_window
+        pre_audio_data=pre_audio_data, audio_data=audio_data,
+        stem_window=stem_window, mix_window=mix_window
     ).run()
 
     stem_in_mix_audio = StemInMixCalculator(
@@ -514,6 +530,13 @@ def subtract_stem(
 
 
 if __name__ == "__main__":
+    kwargs = {}
+    for flag, arg in zip(sys.argv[4::2], sys.argv[5::2]:
+        if not flag.startswith("--"):
+            raise Exception("invalid flag")
+
+        kwargs[flag[2:]] = arg
+
     subtract_stem(
         stem_path=sys.argv[1], mix_path=sys.argv[2], out_path=sys.argv[3]
     )
