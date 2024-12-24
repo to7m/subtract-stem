@@ -169,6 +169,9 @@ class GenerateBins:
         windowed = np.empty(len(window), dtype=np.float32)
         bins = np.empty(len(window), dtype=np.complex64)
         for _ in range(self.num_to_generate):
+            print(start_i / 48000, stop_i / 48000)
+            for i in range(100000):
+                i += i ** 0.9
             empty_full_i = max(-start_i, 0)
             full_empty_i = max(audio_len - start_i, 0)
 
@@ -231,19 +234,22 @@ class EqProfileCalculator:
 
     def _calculate_alignments(self, audio_data):
         ideal_mix_transforms_start_i \
-            = audio_data.out_start_sample - len(self.mix_window) / 4
+            = audio_data.profile_start_sample - len(self.mix_window) / 4
 
-        result_len = audio_data.out_stop_sample - audio_data.out_start_sample
-        len_after_first_transform = result_len - len(self.mix_window) // 2
+        profile_len \
+            = audio_data.profile_stop_sample - audio_data.profile_start_sample
+        len_after_first_transform = profile_len - len(self.mix_window) // 2
         ideal_num_of_subsequent_transforms \
             = len_after_first_transform / self.interval
         subsequent_num_of_transforms \
             = round(ideal_num_of_subsequent_transforms)
 
-        out_middle_sample \
-            = (audio_data.out_start_sample + audio_data.out_stop_sample) / 2
+        profile_middle_sample = (
+            (audio_data.profile_start_sample + audio_data.profile_stop_sample)
+            / 2
+        )
         centre_of_first_transform = (
-            out_middle_sample
+            profile_middle_sample
             - subsequent_num_of_transforms * self.interval / 2
         )
         mix_transforms_start_i \
