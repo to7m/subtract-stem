@@ -10,9 +10,6 @@ import soundfile
 import librosa
 
 
-import warnings; warnings.filterwarnings("error", category=RuntimeWarning)
-
-
 DEFAULT_TRANSFORM_LEN = 1000
 DEFAULT_SMOOTHING_LEN = 200
 DEFAULT_WEIGHTING_EXPONENT = 0.0
