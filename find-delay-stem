@@ -117,7 +117,9 @@ def find_delay_stem(
                 f"calculating EQ profile: transform pair {i+1} of {total}"
             )
 
-        return np.sum(np.abs(eq_profile_calculator.eq_profile))
+        score = np.sum(np.abs(eq_profile_calculator.eq_profile))
+
+        return score
 
     print(f"finding optimal --delay-stem", end="\n\n\n")
     for val_a, val_b, val_c in hone_in(scoring_function, val_a, val_b, val_c):
@@ -128,7 +130,7 @@ def find_delay_stem(
             end="\n\n\n"
         )
 
-    print(f"--delay-stem should be {val_b / audio_data.sample_rate}")
+    print(f"--delay-stem should be {val_b:.8f}")
 
 
 if __name__ == "__main__":

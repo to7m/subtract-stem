@@ -220,7 +220,7 @@ class EqProfileCalculator:
             start_i=mix_transforms_start_i,
             num_to_generate=self.num_of_iterations,
             interval=self.interval,
-            window=stem_window
+            window=mix_window
         )
 
         self.eq_profile = None
