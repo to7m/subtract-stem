@@ -38,7 +38,7 @@ def parse_timestamp(ts, *, default=0):
 
 def whole_and_remainder(x):
     whole = int(x)
-    remainder = float(whole - x)
+    remainder = float(x - whole)
     return whole, remainder
 
 
