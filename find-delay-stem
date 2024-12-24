@@ -73,27 +73,34 @@ def find_delay_stem(
     pre_audio_data = lib.PreAudioData(
         transform_len=transform_len,
         weighting_exponent=weighting_exponent,
-        max_amplification=max_amplification,
-        smoothing_len=smoothing_len
+        max_amplification=max_amplification
     )
 
     print("loading audio files")
     audio_data = lib.AudioData(
         stem_path, mix_path,
         delay_stem=0,
-        profile_start=profile_start, profile_stop=profile_stop,
-        out_start=out_start, out_stop=out_stop
+        profile_start=profile_start, profile_stop=profile_stop
     )
 
     estimate_str = None
 
+    print("making mix Hann window")
+    mix_window = lib.make_hann_window(pre_audio_data.transform_len)
+
     def scoring_function(delay_stem):
         delay_stem_samples \
-            = parse_timestamp(delay_stem) * audio_data.sample_rate
+            = lib.parse_timestamp(delay_stem) * audio_data.sample_rate
         (
             audio_data.delay_stem_samples_whole,
             audio_data.delay_stem_samples_remainder
-        ) = whole_and_remainder(delay_stem_samples)
+        ) = lib.whole_and_remainder(delay_stem_samples)
+
+        print("making stem Hann window")
+        stem_window = lib.make_hann_window(
+            pre_audio_data.transform_len,
+            samples_early=audio_data.delay_stem_samples_remainder
+        )
 
         print("calculating EQ profile", end="", flush=True)
         eq_profile_calculator = lib.EqProfileCalculator(
@@ -108,11 +115,11 @@ def find_delay_stem(
 
         return np.sum(np.abs(eq_profile_calculator.eq_profile))
 
-    print(f"finding optimal --delay-stem")
+    print(f"finding optimal --delay-stem\n")
     for val_a, val_b, val_c in hone_in(scoring_function, val_a, val_b, val_c):
         print(
-            f"\033[A\rfinding optimal delay_stem: estimating {val_b} with range "
-            f"{val_c - val_a}"
+            f"\033[2A\rfinding optimal --delay-stem: estimating {val_b} with "
+            f"range {val_c - val_a}"
         )
     print("")
 
@@ -128,7 +135,7 @@ if __name__ == "__main__":
         key = flag[2:].replace('-', '_')
         kwargs[key] = arg
 
-    subtract_stem(
+    find_delay_stem(
         stem_path=sys.argv[1], mix_path=sys.argv[2],
         **kwargs
     )
