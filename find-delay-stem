@@ -98,7 +98,7 @@ def find_delay_stem(
         ) = lib.whole_and_remainder(delay_stem_samples)
 
         print(
-            "\r\033[A\033[K\033"
+            "\r\033[A\033[K\033[A"
             "making stem Hann window"
         )
         stem_window = lib.make_hann_window(
