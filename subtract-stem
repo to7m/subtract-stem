@@ -11,9 +11,9 @@ import librosa
 
 
 DEFAULT_TRANSFORM_LEN = 1000
-DEFAULT_SMOOTHING_LEN = 200
-DEFAULT_WEIGHTING_EXPONENT = 0.0
 DEFAULT_MAX_AMPLIFICATION = 10000.0
+DEFAULT_WEIGHTING_EXPONENT = 0.0
+DEFAULT_SMOOTHING_LEN = 0.0  # seems to only cause crackling
 
 ONE_ROTATED = (-1) ** (1 / pi)
 ONE_ROTATED_CONJUGATED = (-1) ** (-1 / pi)
@@ -43,16 +43,16 @@ class PreAudioData:
     def __init__(
         self, *,
         transform_len=DEFAULT_TRANSFORM_LEN,
-        smoothing_len=DEFAULT_SMOOTHING_LEN,
+        max_amplification=DEFAULT_MAX_AMPLIFICATION,
         weighting_exponent=DEFAULT_WEIGHTING_EXPONENT,
-        max_amplification=DEFAULT_MAX_AMPLIFICATION
+        smoothing_len=DEFAULT_SMOOTHING_LEN
     ):
         self.transform_len = self._sanitise_transform_len(transform_len)
-        self.smoothing_len = self._sanitise_smoothing_len(smoothing_len)
-        self.weighting_exponent \
-            = self._sanitise_weighting_exponent(weighting_exponent)
         self.max_amplification \
             = self._sanitise_max_amplification(max_amplification)
+        self.weighting_exponent \
+            = self._sanitise_weighting_exponent(weighting_exponent)
+        self.smoothing_len = self._sanitise_smoothing_len(smoothing_len)
 
         self.interval = self.transform_len // 2
         self.half_fade_len = ceil(self.smoothing_len) // 2
@@ -68,6 +68,17 @@ class PreAudioData:
 
         return transform_len
 
+    def _sanitise_weighting_exponent(self, weighting_exponent):
+        return float(weighting_exponent)
+
+    def _sanitise_max_amplification(self, max_amplification):
+        max_amplification = float(max_amplification)
+
+        if max_amplification <= 0:
+            raise ValueError("max_amplification must be greater than 0")
+
+        return max_amplification
+
     def _sanitise_smoothing_len(self, smoothing_len):
         smoothing_len = float(smoothing_len)
 
@@ -77,17 +88,6 @@ class PreAudioData:
             )
 
         return max(smoothing_len, 1.0)
-
-    def _sanitise_weighting_exponent(self, weighting_exponent):
-        return float(weighting_exponent)
-
-    def _sanitise_max_amplification(self, max_amplification):
-        max_amplification = float(max_amplification)
-
-        if max_amplification <= 0:
-            raise ValueError("max_amplification must be greater than 0")
-        
-        return max_amplification
 
     def _get_fade_in_curve(self):
         phase = (
@@ -506,16 +506,16 @@ def subtract_stem(
     profile_start=None, profile_stop=None,
     out_start=None, out_stop=None,
     transform_len=DEFAULT_TRANSFORM_LEN,
-    smoothing_len=DEFAULT_SMOOTHING_LEN,
     weighting_exponent=DEFAULT_WEIGHTING_EXPONENT,
-    max_amplification=DEFAULT_MAX_AMPLIFICATION
+    max_amplification=DEFAULT_MAX_AMPLIFICATION,
+    smoothing_len=DEFAULT_SMOOTHING_LEN
 ):
     print("handling pre-audio arguments")
     pre_audio_data = PreAudioData(
         transform_len=transform_len,
-        smoothing_len=smoothing_len,
         weighting_exponent=weighting_exponent,
-        max_amplification=max_amplification
+        max_amplification=max_amplification,
+        smoothing_len=smoothing_len
     )
 
     print("loading audio files")
