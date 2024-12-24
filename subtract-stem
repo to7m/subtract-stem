@@ -169,9 +169,6 @@ class GenerateBins:
         windowed = np.empty(len(window), dtype=np.float32)
         bins = np.empty(len(window), dtype=np.complex64)
         for _ in range(self.num_to_generate):
-            print(start_i / 48000, stop_i / 48000)
-            for i in range(100000):
-                i += i ** 0.9
             empty_full_i = max(-start_i, 0)
             full_empty_i = max(audio_len - start_i, 0)
 
