@@ -40,19 +40,18 @@ def subtract_stem(
     )
     mix_window = lib.make_hann_window(pre_audio_data.transform_len)
 
-    print("calculating EQ profile", end="", flush=True)
+    print("calculating EQ profile")
     eq_profile_calculator = lib.EqProfileCalculator(
         pre_audio_data=pre_audio_data, audio_data=audio_data,
         stem_window=stem_window, mix_window=mix_window
     )
     for i, total in eq_profile_calculator.run_gen():
         print(
-            f"\rcalculating EQ profile: transform pair {i+1} of {total}",
-            end="", flush=True
+            f"\033[A\rcalculating EQ profile: transform pair {i+1} of "
+            f"{total}"
         )
-    print("")
 
-    print("making stem-in-mix audio", end="", flush=True)
+    print("making stem-in-mix audio")
     stem_in_mix_calculator = lib.StemInMixCalculator(
         interval=pre_audio_data.interval,
         fade_in_curve=pre_audio_data.fade_in_curve,
@@ -61,10 +60,7 @@ def subtract_stem(
         eq_profile=eq_profile_calculator.eq_profile
     )
     for i, total in stem_in_mix_calculator.run_gen():
-        print(f"making stem-in-mix audio: transform {i} of {total}",
-        end="", flush=True
-    )
-    print("")
+        print(f"\033[A\rmaking stem-in-mix audio: transform {i} of {total}")
 
     print("subtracting stem-in-mix audio from mix audio")
     mix_minus_stem_audio = lib.get_mix_minus_stem(

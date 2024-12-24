@@ -2,6 +2,7 @@
 
 
 import sys
+import numpy as np
 
 import subtract_stem_lib as lib
 
@@ -96,32 +97,31 @@ def find_delay_stem(
             audio_data.delay_stem_samples_remainder
         ) = lib.whole_and_remainder(delay_stem_samples)
 
-        print("making stem Hann window")
+        print("\033[2A\rmaking stem Hann window")
         stem_window = lib.make_hann_window(
             pre_audio_data.transform_len,
             samples_early=audio_data.delay_stem_samples_remainder
         )
 
-        print("calculating EQ profile", end="", flush=True)
+        print("calculating EQ profile")
         eq_profile_calculator = lib.EqProfileCalculator(
             pre_audio_data=pre_audio_data, audio_data=audio_data,
             stem_window=stem_window, mix_window=mix_window
         )
         for i, total in eq_profile_calculator.run_gen():
             print(
-                f"\rcalculating EQ profile: transform pair {i+1} of {total}",
-                end="", flush=True
+                f"\033[A\rcalculating EQ profile: transform pair {i+1} of "
+                f"{total}"
             )
 
         return np.sum(np.abs(eq_profile_calculator.eq_profile))
 
-    print(f"finding optimal --delay-stem\n")
+    print(f"finding optimal --delay-stem\n\n")
     for val_a, val_b, val_c in hone_in(scoring_function, val_a, val_b, val_c):
         print(
-            f"\033[2A\rfinding optimal --delay-stem: estimating {val_b} with "
+            f"\033[3A\rfinding optimal --delay-stem: estimating {val_b} with "
             f"range {val_c - val_a}"
         )
-    print("")
 
     print(f"--delay-stem should be {val_b / audio_data.sample_rate}")
 
