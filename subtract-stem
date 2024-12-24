@@ -81,8 +81,6 @@ class PreAudioData:
 
         return max(smoothing_len, 1.0)
 
-        return smoothing_len
-
     def _sanitise_weighting_exponent(self, weighting_exponent):
         return float(weighting_exponent)
 
