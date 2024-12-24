@@ -1,0 +1,134 @@
+#!.venv_for_python3.12.7/bin/python
+
+
+import sys
+
+import subtract_stem_lib as lib
+
+
+START_DELAY_STEM_MARGIN = 1.0
+
+
+def get_start_vals(*, start_delay_stem, start_delay_stem_margin):
+    if start_delay_stem is None:
+        start_delay_stem = 0.0
+    else:
+        start_delay_stem = float(start_delay_stem)
+
+    start_delay_stem_margin = float(start_delay_stem_margin)
+
+    val_a = start_delay_stem - start_delay_stem_margin
+    val_b = start_delay_stem
+    val_c = start_delay_stem + start_delay_stem_margin
+
+    return val_a, val_b, val_c
+
+
+def hone_in(scoring_function, val_a, val_b, val_c):
+    val_a, val_b, val_c = sorted([val_a, val_b, val_c])
+    yield val_a, val_b, val_c
+
+    score_a = scoring_function(val_a)
+    score_b = scoring_function(val_b)
+    score_c = scoring_function(val_c)
+
+    while len({val_a, val_b, val_c}) == 3:
+        if score_a > score_b:
+            val_b, val_c = val_a, val_b
+            score_b, score_c = score_a, score_b
+            val_a = val_b + 1.4 * (val_b - val_c)
+            yield val_a, val_b, val_c
+
+            score_a = scoring_function(val_a)
+        elif score_c > score_b:
+            val_a, val_b = val_b, val_c
+            score_a, score_b = score_b, score_c
+            val_c = val_b + 1.4 * (val_b - val_a)
+            yield val_a, val_b, val_c
+
+            score_c = scoring_function(val_c)
+        else:
+            val_a = (val_a + val_b) / 2
+            val_c = (val_b + val_c) / 2
+            yield val_a, val_b, val_c
+
+            score_a = scoring_function(val_a)
+            score_c = scoring_function(val_c)
+
+
+def find_delay_stem(
+    stem_path, mix_path, *,
+    start_delay_stem=None, start_delay_stem_margin=START_DELAY_STEM_MARGIN,
+    profile_start=None, profile_stop=None,
+    transform_len=lib.DEFAULT_TRANSFORM_LEN,
+    weighting_exponent=lib.DEFAULT_WEIGHTING_EXPONENT,
+    max_amplification=lib.DEFAULT_MAX_AMPLIFICATION
+):
+    val_a, val_b, val_c = get_start_vals(
+        start_delay_stem=start_delay_stem,
+        start_delay_stem_margin=start_delay_stem_margin
+    )
+
+    print("handling pre-audio arguments")
+    pre_audio_data = lib.PreAudioData(
+        transform_len=transform_len,
+        weighting_exponent=weighting_exponent,
+        max_amplification=max_amplification,
+        smoothing_len=smoothing_len
+    )
+
+    print("loading audio files")
+    audio_data = lib.AudioData(
+        stem_path, mix_path,
+        delay_stem=0,
+        profile_start=profile_start, profile_stop=profile_stop,
+        out_start=out_start, out_stop=out_stop
+    )
+
+    estimate_str = None
+
+    def scoring_function(delay_stem):
+        delay_stem_samples \
+            = parse_timestamp(delay_stem) * audio_data.sample_rate
+        (
+            audio_data.delay_stem_samples_whole,
+            audio_data.delay_stem_samples_remainder
+        ) = whole_and_remainder(delay_stem_samples)
+
+        print("calculating EQ profile", end="", flush=True)
+        eq_profile_calculator = lib.EqProfileCalculator(
+            pre_audio_data=pre_audio_data, audio_data=audio_data,
+            stem_window=stem_window, mix_window=mix_window
+        )
+        for i, total in eq_profile_calculator.run_gen():
+            print(
+                f"\rcalculating EQ profile: transform pair {i+1} of {total}",
+                end="", flush=True
+            )
+
+        return np.sum(np.abs(eq_profile_calculator.eq_profile))
+
+    print(f"finding optimal --delay-stem")
+    for val_a, val_b, val_c in hone_in(scoring_function, val_a, val_b, val_c):
+        print(
+            f"\033[A\rfinding optimal delay_stem: estimating {val_b} with range "
+            f"{val_c - val_a}"
+        )
+    print("")
+
+    print(f"--delay-stem should be {val_b / audio_data.sample_rate}")
+
+
+if __name__ == "__main__":
+    kwargs = {}
+    for flag, arg in zip(sys.argv[3::2], sys.argv[4::2]):
+        if not flag.startswith("--"):
+            raise Exception("invalid flag")
+
+        key = flag[2:].replace('-', '_')
+        kwargs[key] = arg
+
+    subtract_stem(
+        stem_path=sys.argv[1], mix_path=sys.argv[2],
+        **kwargs
+    )
