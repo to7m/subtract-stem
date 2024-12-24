@@ -174,7 +174,7 @@ class GenerateBins:
 
             windowed[:empty_full_i] = 0
             np.multiply(
-                audio[max(start_i, 0):stop_i],
+                audio[max(start_i, 0):max(stop_i, 0)],
                 window[empty_full_i:full_empty_i],
                 out=windowed[empty_full_i:full_empty_i]
             )
