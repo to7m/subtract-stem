@@ -64,7 +64,7 @@ def subtract_stem(
 
     print("subtracting stem-in-mix audio from mix audio")
     mix_minus_stem_audio = lib.get_mix_minus_stem(
-        audio_data.mix_audio, stem_in_mix_audio,
+        audio_data.mix_audio, stem_in_mix_calculator.stem_in_mix_audio,
         out_start_sample=audio_data.out_start_sample
     )
 
