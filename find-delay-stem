@@ -8,6 +8,7 @@ import subtract_stem_lib as lib
 
 
 START_DELAY_STEM_MARGIN = 1.0
+MIN_RANGE = 0.000_000_001
 
 
 def get_start_vals(*, start_delay_stem, start_delay_stem_margin):
@@ -33,7 +34,7 @@ def hone_in(scoring_function, val_a, val_b, val_c):
     score_b = scoring_function(val_b)
     score_c = scoring_function(val_c)
 
-    while len({val_a, val_b, val_c}) == 3:
+    while val_c - val_a >= MIN_RANGE:
         if score_a > score_b:
             val_b, val_c = val_a, val_b
             score_b, score_c = score_a, score_b
