@@ -256,68 +256,6 @@ class EqProfileCalculator:
             stem_transforms_start_i, mix_transforms_start_i, num_of_iterations
         )
 
-    def _interpolate_section(self, a, first, last, as_phase):
-        last_i = len(a) - 1
-
-        match first, last:
-            case 0, last_i:
-                a[first:last + 1] = 1.0
-            case 0, _:
-                a[:last + 1] = a[last + 1]
-            case _, last_i:
-                a[first:] = a[first - 1]
-            case _:
-                before_val, after_val = a[first - 1], a[last + 1]
-
-                if as_phase:
-                    diff = after_val - before_val
-                    closest_diff = (diff + pi) % tau - pi
-
-                    after_val = before_val + closest_diff
-
-                num_of_missing = last + 1 - first
-                gradient = (after_val - before_val) / (num_of_missing + 1)
-
-                for i in range(1, num_of_missing + 1):
-                    a[first - 1 + i] = before_val + i * gradient
-
-    def _interpolate_missing(self, a, is_present_arr, as_phase=False):
-        first = last = None
-
-        for i, is_present in enumerate(is_present_arr):
-            if is_present:
-                if first is not None:
-                    self._interpolate_section(a, first, last)
-                    first = last = None
-            else:
-                if first is None:
-                    first = i
-
-                last = i
-
-        if first is not None:
-            self._interpolate_section(a, first, last, as_phase=as_phase)
-
-    def _ensure_amplification_limit(
-        self, *, abs_stem_bins_sum, rotated_mix_bins_sum
-    ):
-        abs_mix_bins_sum = np.abs(rotated_mix_bins_sum)
-        rotation = np.angle(rotated_mix_bins_sum)
-
-        is_within_amplification_limit \
-            = abs_mix_bins_sum <= abs_stem_bins_sum * self.max_amplification
-        is_safe_from_zero_division = abs_mix_bins_sum != 0
-        is_usable = is_within_amplification_limit & is_safe_from_zero_division
-
-        self._interpolate_missing(abs_stem_bins_sum, is_usable)
-        self._interpolate_missing(abs_mix_bins_sum, is_usable)
-        self._interpolate_missing(rotation, is_usable, as_phase=True)
-
-        np.multiply(
-            abs_mix_bins_sum, ONE_ROTATED ** rotation,
-            out=rotated_mix_bins_sum
-        )
-
     def run_gen(self):
         abs_stem_bins = np.empty(len(self.mix_window), dtype=np.float32)
         rotated_mix_bins = np.empty(len(self.mix_window), dtype=np.complex64)
@@ -346,19 +284,6 @@ class EqProfileCalculator:
             rotated_mix_bins_sum += rotated_mix_bins
 
             yield i, num_of_iterations
-
-        self._ensure_amplification_limit(
-            abs_stem_bins_sum=abs_stem_bins_sum,
-            rotated_mix_bins_sum=rotated_mix_bins_sum
-        )
-
-        self.eq_profile = rotated_mix_bins_sum / abs_stem_bins_sum
-
-    def run(self):
-        for _ in self.run_gen():
-            pass
-
-        return self.eq_profile
 
 
 class StemInMixCalculator:
