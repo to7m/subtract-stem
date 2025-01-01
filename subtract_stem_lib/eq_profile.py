@@ -3,12 +3,15 @@ from .sanitisation import sanitise_args
 from .math import ataabtrnfatbaa, from_abs_and_angle, to_abs_and_angle
 
 
-class _Constants:
+class _SingleConstants:
+    def __init__(self):
+        ...
+
+
+class _RunningConstants:
     def __init__(
         self, *,
-        sample_rate,
-        transform_len,
-        lookbehind_s, lookahead_s
+        sample_rate, transform_len, lookbehind_s, lookahead_s
     ):
         _transforms_interval_s = transform_len / sample_rate
 
@@ -40,7 +43,23 @@ class _Constants:
         )
 
 
-class _Iterator:
+class _SingleIterator:
+    def __init__(self, constants):
+        self._constants = constants
+
+        self._i = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._i == self._constants.num_of_total_iterations:
+            raise StopIteration
+
+        +...
+
+
+class _RunningIterator:
     def __init__(self, constants):
         self._constants = constants
 
@@ -171,18 +190,45 @@ class _Iterator:
         ]
 
 
+class GenerateSingleEqProfile:
+    def __init__(
+        self, *,
+        sample_rate,
+        transform_len=TRANSFORM_LEN,
+        start_s=None, stop_s=None,
+        fully_cover_all=False, centre=True,
+    ):
+        self.constants = _SingleConstants(**sanitise_args({
+            "sample_rate": sample_rate,
+            "transform_len": transform_len,
+            "start_s": start_s, "stop_s": stop_s,
+            "fully_cover_all": fully_cover_all, "centre": centre
+        }))
+
+    def __iter__(self):
+        return _SingleIterator(self.constants)
+
+    def run(self):
+        for _ in self:
+            pass
+
+        return self.eq_profile
+
+
 class GenerateRunningEqProfile:
     def __init__(
         self, *,
         sample_rate,
         transform_len=TRANSFORM_LEN,
         start_s=None, stop_s=None,
-        cover_all=True, centre=True,
+        fully_cover_all=True, centre=True,
         lookbehind_s=LOOKBEHIND_S, lookahead_s=LOOKAHEAD_S,
     ):
-        self.constants = _Constants(**sanitise_args({
+        self.constants = _RunningConstants(**sanitise_args({
             "sample_rate": sample_rate,
             "transform_len": transform_len,
+            "start_s": start_s, "stop_s": stop_s,
+            "fully_cover_all": fully_cover_all, "centre": centre,
             "lookbehind_s": lookbehind_s, "lookahead_s": lookahead_s
         }))
 

@@ -64,7 +64,7 @@ class _Iterator:
         self._windowed[break_full_to_empty_i:] = 0
 
 
-class Spectra:
+class GenerateSpectra:
     def __init__(
         self, *,
         transforms_start_i, num_of_transforms, interval_len,
@@ -76,7 +76,7 @@ class Spectra:
             "num_of_transforms": num_of_transforms,
             "interval_len": interval_len,
             "audio": audio,
-            "window": window
+            "window": window,
             "num_of_retained": num_of_retained
         }))
 
@@ -84,7 +84,7 @@ class Spectra:
         return _Iterator(self.constants)
 
 
-class StemAndMixSpectra:
+class GenerateStemAndMixSpectra:
     def __init__(
         self, *,
         stem_transforms_start_i, mix_transforms_start_i,

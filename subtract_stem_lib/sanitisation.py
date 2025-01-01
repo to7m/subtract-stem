@@ -1,16 +1,18 @@
+from pathlib import Path
 from fractions import Fraction
+import numpy as np
+
+from .to7m_exec import func_from_str
 
 
-sanitisers = {}
+def _logger_ignore(**_):
+    return _logger_ignore
 
 
-def _get_add_sanitiser_for_name(name):
-    def add_sanitiser(sanitiser_function):
-        sanitisers[name] = sanitiser_function
+def _logger_print(**kwargs):
+    print(kwargs)
 
-        return sanitiser_function
-
-    return add_sanitiser
+    return _logger_print
 
 
 def _parse_timestamp(ts):
@@ -27,24 +29,127 @@ def _parse_timestamp(ts):
         return Fraction(ts)
 
 
-@_get_add_sanitiser_for_name("lookbehind_s")
-def sanitise_lookbehind_s(lookbehind_s):
-    lookbehind_s = _parse_timestamp(lookbehind_s)
-
-    if lookbehind_s < 0:
-        raise ValueError("lookbehind_s should not be less than 0")
-
-    return lookbehind_s
+sanitisers = {}
 
 
-@_get_add_sanitiser_for_name("lookahead_s")
-def sanitise_lookahead_s(lookahead_s):
-    lookahead_s = _parse_timestamp(lookahead_s)
+def _get_add_sanitiser_for_name(name):
+    def add_sanitiser(sanitiser_function):
+        sanitisers[name] = sanitiser_function
 
-    if lookahead_s < 0:
-        raise ValueError("lookahead_s should not be less than 0")
+        return sanitiser_function
 
-    return lookahead_s
+    return add_sanitiser
+
+
+def _make_sanitise_audio(audio_type):
+    sanitise_audio = func_from_str(
+        f"""
+        def sanitise_{audio_type}_audio({audio_type}_audio):
+            if type({audio_type}_audio) is not np.ndarray:
+                raise TypeError(
+                    "{audio_type}_audio should be a numpy.ndarray"
+                )
+
+            if len({audio_type}_audio.shape) != 1:
+                raise ValueError(
+                    "{audio_type}_audio should contain 1 channel"
+                )
+
+            return {audio_type}_audio
+        """,
+        globals_={"np": np}
+    )
+
+    decorator = _get_add_sanitiser_for_name(f"{audio_type}_audio")
+
+    return decorator(sanitise_audio)
+
+
+def _make_sanitise_fraction(name):
+    sanitise_fraction = func_from_str(
+        f"""
+        def sanitise_{name}({name}):
+            return Fraction({name})
+        """,
+        globals_={"Fraction": Fraction}
+    )
+
+    decorator = _get_add_sanitiser_for_name(name)
+
+    return decorator(sanitise_fraction)
+
+
+def _make_sanitise_lookbehindahead_s(direction):
+    sanitise_lookbehindahead_s = func_from_str(
+        f"""
+        def sanitise_look{direction}_s(look{direction}_s):
+            look{direction}_s = _parse_timestamp(look{direction}_s)
+
+            if look{direction}_s < 0:
+                raise ValueError(
+                    "look{direction}_s should not be less than 0"
+                )
+
+            return look{direction}_s
+        """,
+        globals_={"_parse_timestamp": _parse_timestamp}
+    )
+
+    decorator = _get_add_sanitiser_for_name(f"look{direction}_s")
+
+    return decorator(sanitise_lookbehindahead_s)
+
+
+def _make_sanitise_timestamp(name):
+    sanitise_timestamp = func_from_str(
+        f"""
+        def sanitise_{name}({name}):
+            if {name} is None:
+                return None
+            else:
+                return _parse_timestamp({name})
+        """,
+        globals_={"_parse_timestamp": _parse_timestamp}
+    )
+
+    decorator = _get_add_sanitiser_for_name(name)
+
+    return decorator(sanitise_timestamp)
+
+
+sanitise_intermediate_audio = _make_sanitise_audio("intermediate")
+sanitise_mix_audio = _make_sanitise_audio("mix")
+sanitise_stem_audio = _make_sanitise_audio("stem")
+
+sanitise_start_val = _make_sanitise_fraction("start_val")
+sanitise_start_add = _make_sanitise_fraction("start_add")
+sanitise_min_diff = _make_sanitise_fraction("min_diff")
+sanitise_side_winner_mul = _make_sanitise_fraction("side_winner_mul")
+
+sanitise_lookahead_s = _make_sanitise_lookbehindahead_s("ahead")
+sanitise_lookahead_s = _make_sanitise_lookbehindahead_s("behind")
+
+sanitise_delay_stem_s_start_val \
+    = _make_sanitise_timestamp("delay_stem_s_start_val")
+sanitise_delay_stem_s_start_add \
+    = _make_sanitise_timestamp("delay_stem_s_start_add")
+sanitise_start_s = _make_sanitise_timestamp("start_s")
+sanitise_stop_s = _make_sanitise_timestamp("stop_s")
+
+
+@_get_add_sanitiser_for_name("logger")
+def sanitise_logger(logger):
+    if callable(logger):
+        return logger
+    elif logger:
+        return _logger_print
+    else:
+        return _logger_ignore
+
+
+@_get_add_sanitiser_for_name("path")
+def sanitise_path(path):
+    return Path(path)
 
 
 @_get_add_sanitiser_for_name("sample_rate")
@@ -55,6 +160,14 @@ def sanitise_sample_rate(sample_rate):
         raise ValueError("sample_rate should be greater than 0")
 
     return sample_rate
+
+
+@_get_add_sanitiser_for_name("scoring_function")
+def sanitise_scoring_function(scoring_function):
+    if callable(scoring_function):
+        return scoring_function
+    else:
+        raise TypeError("scoring_function should be a callable")
 
 
 @_get_add_sanitiser_for_name("transform_len")
