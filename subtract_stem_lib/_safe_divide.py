@@ -26,7 +26,49 @@ def _get_is_safe__cff(
     # is safe
     out &= intermediate_c
 
-    return out
+
+def _interpolate_missing_segment(
+    x, *, last_present_before, first_present_after
+):
+    start_val = x[last_present_before]
+    stop_val = x[first_present_after]
+
+    divisions = first_present_after - last_present_before
+    gradient = (stop_val - start_val) / divisions
+
+    for i in range(1, divisions):
+        x[last_present_before + i] = start_val + i * gradient
+
+
+def _interpolate_missing(x, *, is_present):
+    is_present_iter = enumerate(is_present)
+
+    if not next(is_present_iter)[1]:
+        for i, pres in is_present_iter:
+            if pres:
+                x[:i] = x[i]
+
+                break
+
+    first_missing = None
+    for i, pres in is_present_iter:
+        if not pres:
+            first_missing = i
+
+            for i, pres in is_present_iter:
+                if pres:
+                    _interpolate_missing_segment(
+                        x,
+                        last_present_before=first_missing - 1,
+                        first_present_after=i
+                    )
+
+                    first_missing = None
+
+                    break
+
+    if first_missing is not None:
+        x[first_missing:] = x[first_missing - 1]
 
 
 def safe_divide__cff(
@@ -40,28 +82,23 @@ def safe_divide__cff(
     intermediate_d=None, # bool
     out=None # complex64
 ):
-    is_safe = _get_is_safe(
+    _get_is_safe(
         a, b,
         max_amplification=max_amplification,
         intermediate_a=intermediate_a,
         intermediate_b=intermediate_b,
-        intermediate_c=intermediate_c
+        intermediate_c=intermediate_c,
         out=intermediate_d
     )
 
-    if np.any(is_safe):
+    if np.any(intermediate_d):
+        np.divide(a, b, out=out)
 
-    ...
-        if np.any(is_safe):
-            np.divide(
-                self._rotated_mix_bins_sum,
-                self._abs_stem_bins_sum,
-                out=self._eq_profile
-            )
+        if not np.all(intermediate_d):
+            _interpolate_missing(out, is_present=intermediate_d)
+    elif out is None:
+        out = np.zeros(a.shape, dtype=np.complex64)
+    else:
+        out.fill(0)
 
-            if not np.all(is_safe):
-                self._interpolate_missing(is_safe)
-        else:
-            self._eq_profile.fill(0)
-
-        return self._eq_profile
+    return out
