@@ -10,3 +10,8 @@ from .intermediate_in_mix import GenerateRunningIntermediateInMix
 from .subtract_from_mix import (
     subtract_running_stem_from_mix, subtract_running_intermediate_from_mix
 )
+
+
+# There's no thread-safe way of doing this so I'm just putting it here to make
+# it obvious.
+np.seterr(divide="ignore")

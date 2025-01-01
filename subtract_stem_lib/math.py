@@ -1,11 +1,19 @@
 from math import atan2, pi
 
+from ._safe_divide import safe_divide, safe_reciprocal
+
 
 ONE_ROTATED = (-1) ** (1 / pi)
 ONE_ROTATED_CONJUGATED = (-1) ** (-1 / pi)
 
 
-def ataabtrnfatbaa(a, b, *, out_a=None, out_b=None):
+def ataabtrnfatbaa(
+    a,  # complex64
+    b,  # complex64
+    *,
+    out_a=None,  # float32
+    out_b=None  # complex64
+):
     """Apply to 'a' and 'b' the rotation needed for 'a' to become abs(a)."""
 
     np.abs(a, out=out_a)
