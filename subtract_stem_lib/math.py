@@ -1,6 +1,6 @@
 from math import atan2, pi
 
-from ._safe_divide import safe_divide, safe_reciprocal
+from ._safe_divide import safe_divide__cf, safe_reciprocal__c
 
 
 ONE_ROTATED = (-1) ** (1 / pi)

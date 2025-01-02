@@ -1,6 +1,10 @@
+import numpy as np
+
 from .defaults import TRANSFORM_LEN, LOOKBEHIND_S, LOOKAHEAD_S
 from .sanitisation import sanitise_args
-from .math import ataabtrnfatbaa, from_abs_and_angle, to_abs_and_angle
+from .math import (
+    ataabtrnfatbaa, from_abs_and_angle, safe_divide__cf, to_abs_and_angle
+)
 
 
 class _SingleConstants:
@@ -63,9 +67,17 @@ class _RunningIterator:
     def __init__(self, constants):
         self._constants = constants
 
+        self._stem_and_mix_spectra_iter \
+            = iter(constants._stem_and_mix_spectra)
+
         self._i = 0
 
+        self._eq_profile \
+            = np.empty(constants.transform_len, dtype=np.complex64)
+
         self._handle_before_spectra()
+
+        # cumsums have to be 1 2d array each
 
     def __iter__(self):
         return self
@@ -75,15 +87,37 @@ class _RunningIterator:
             raise StopIteration
 
         self._common_routine()
-        eq_profile = self._safe_divide()
+        eq_profile = self._calculate_eq_profile()
         stem_spectrum = self._get_old_stem_spectrum()
 
         self._i += 1
 
         return eq_profile, stem_spectrum
 
+    def _add_to_cumsum(self, spectrum, *, cumsum):
+        curr_i = self._i % self._constants.cumsum_len
+
+        if curr_i == 0:
+            cumsum[0] = spectrum
+        else:
+            np.add(cumsum[curr_i - 1], spectrum, out=cumsum[curr_i])
+
     def _common_routine(self):
-        ...
+        stem_spectrum, mix_spectrum = next(self._stem_and_mix_spectra_iter)
+        self._retained_stem_spectra[self._i % self._constants.retained_len] \
+            = stem_spectrum
+
+        abs_stem_spectrum, rotated_mix_spectrum = ataabtrnfatbaa(
+            stem_spectrum, mix_spectrum,
+            out_a=self._abs_stem_spectrum, out_b=self._rotated_mix_spectrum
+        )
+
+        self._add_to_cumsum(
+            abs_stem_spectrum, cumsum=self._abs_stem_spectra_cumsum
+        )
+        self._add_to_cumsum(
+            rotated_mix_spectrum, cumsum=self._rotated_mix_spectra_cumsum
+        )
 
     def _handle_before_spectra(self):
         while (
@@ -93,99 +127,37 @@ class _RunningIterator:
             self._common_routine()
             self._i += 1
 
-    def _get_is_safe(self):
-        np.multiply(
-            self._abs_stem_spectra_sum,
-            self._constants.max_amplification,
-            out=self._max_abs_mix_spectra_sum
-        )
-        np.abs(self._mix_spectra_sum, out=self._abs_mix_spectra_sum)
-        np.less_equal(
-            self._max_abs_mix_spectra_sum,
-            self._abs_mix_spectra_sum,
-            out=self._is_within_amplification_limit
-        )
+    def _get_sum(self, *, cumsum, out):
+        curr_i = self._i % self._constants.cumsum_len
+        take_i = (curr_i + 1) % self._constants.cumsum_len
 
-        np.not_equal(
-            self._abs_stem_spectra_sum, 0,
-            out=self._is_safe_from_zero_division
-        )
+        np.subtract(cumsum[curr_i], cumsum[take_i], out=out)
 
-        return np.logical_and(
-            self._is_within_amplification_limit,
-            self._is_safe_from_zero_division,
-            out=self._is_safe
+        if take_i != 0:
+            out += cumsum[-1]
+
+        return out
+
+    def _calculate_eq_profile(self):
+        abs_stem_spectra_sum = self._get_sum(
+            cumsum=self._abs_stem_spectra_cumsum,
+            out=self._abs_stem_spectra_sum
+        )
+        rotated_mix_spectra_sum = self._get_sum(
+            cumsum=self._rotated_mix_spectra_cumsum,
+            out=self._rotated_mix_spectra_sum
         )
 
-    def _interpolate_missing_segment(
-        self, last_present_before_i, first_present_after_i
-    ):
-        divisions = first_present_after_i - last_present_before_i
-
-        abs_before, angle_before \
-             = to_abs_and_angle(self._eq_profile[last_present_before_i])
-        abs_after, angle_after \
-            = to_abs_and_angle(self._eq_profile(first_present_after_i))
-        abs_diff = abs_after - abs_before
-        angle_diff = (angle_after - angle_before + pi) % tau - pi
-
-        for i in range(1, divisions):
-            abs_val = abs_before + i * abs_diff
-            angle_val = angle_before + i * angle_diff
-            val = from_abs_and_angle(abs_val, angle_val)
-
-            self._eq_profile[last_present_before_i + i] = val
-
-
-    def _interpolate_missing(self, is_present_arr):
-        is_present_iter = enumerate(is_present_arr)
-
-        if not next(is_present_iter)[1]:
-            for i, is_present in is_present_iter:
-                if is_present:
-                    self._eq_profile[:i] = self._eq_profile[i]
-
-        last_present_before_i = None
-        for i, is_present in is_present_iter:
-            if not is_present:
-                last_present_before_i = i-1
-
-                for i, is_present in is_present_iter:
-                    if is_present:
-                        self._interpolate_missing_segment(
-                            last_present_before_i, i
-                        )
-
-                        last_present_before_i = None
-
-                        break
-
-        if last_present_before_i is not None:
-            self._eq_profile[last_present_before_i + 1:] \
-                = self._eq_profile[last_present_before_i]
-
-    def _safe_divide(self):
-        is_safe = self._get_is_safe()
-        if np.any(is_safe):
-            np.divide(
-                self._rotated_mix_bins_sum,
-                self._abs_stem_bins_sum,
-                out=self._eq_profile
-            )
-
-            if not np.all(is_safe):
-                self._interpolate_missing(is_safe)
-        else:
-            self._eq_profile.fill(0)
-
-        return self._eq_profile
+        return safe_divide__cf(
+            rotated_mix_spectra_sum, abs_stem_spectra_sum,
+            max_abs_val=self._constants.max_amplification,
+            **self._intermediate_arrays,
+            out=self._eq_profile
+        )
 
     def _get_old_stem_spectrum(self):
         return self._retained_stem_spectra[
-            (
-                self._transforms_pair_i
-                - self._constants.num_of_lookahead_transforms
-            )
+            (self._i - self._constants.num_of_lookahead_transforms)
             % self._constants.retained_len
         ]
 
