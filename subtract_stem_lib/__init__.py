@@ -1,7 +1,7 @@
 import numpy as np
 
 from .math import safe_divide__cf, safe_reciprocal__c
-from .io import load_audio, save_audio
+from .io import load_mono_audio, save_mono_audio
 from .spectra import GenerateSpectra, GenerateStemAndMixSpectra
 from .eq_profile import GenerateSingleEqProfile, GenerateRunningEqProfile
 from .find_delay_stem_s import find_delay_stem_s
