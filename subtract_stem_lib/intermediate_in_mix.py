@@ -57,6 +57,10 @@ class _RunningIterator:
         return self.trimmed
 
 
+class GenerateSingleIntermediateInMix:
+    ...
+
+
 class GenerateRunningIntermediateInMix:
     def __init__(
         self, *,

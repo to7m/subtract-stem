@@ -51,16 +51,53 @@ class _SingleIterator:
     def __init__(self, constants):
         self._constants = constants
 
+        self._stem_and_mix_spectra_iter \
+            = iter(constants._stem_and_mix_spectra)
+
         self._i = 0
+        self._abs_stem_spectrum \
+            = np.empty(constants.transform_len, dtype=np.float32)
+        self._rotated_mix_spectrum \
+            = np.empty(constants.transform_len, dtype=np.complex64)
+        self._abs_stem_spectra_sum \
+            = np.empty(constants.transform_len, dtype=np.float32)
+        self._rotated_mix_spectra_sum \
+            = np.empty(constants.transform_len, dtype=np.complex64)
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self._i == self._constants.num_of_total_iterations:
-            raise StopIteration
+        if self._i >= self._constants.last_iteration_i:
+            if self._i == self._constants.last_iteration_i:
+                self._routine()
 
-        +...
+                return self._calculate_eq_profile()
+            else:
+                raise StopIteration
+        else:
+            self._routine()
+
+            return None
+
+    def _routine(self):
+        stem_spectrum, mix_spectrum = next(self._stem_and_mix_spectra_iter)
+
+        abs_stem_spectrum, rotated_mix_spectrum = ataabtrnfatbaa(
+            stem_spectrum, mix_spectrum,
+            out_a=self._abs_stem_spectrum, out_b=self._rotated_mix_spectrum
+        )
+
+        self._abs_stem_spectra_sum += abs_stem_spectrum
+        self._rotated_mix_spectra_sum += rotated_mix_spectrum
+
+        self._i += 1
+
+    def _calculate_eq_profile(self):
+        return safe_divide__cf(
+            self._rotated_mix_spectra_sum, self._abs_stem_spectra_sum,
+            max_abs_val=self._constants.max_amplification
+        )
 
 
 class _RunningIterator:
@@ -71,13 +108,18 @@ class _RunningIterator:
             = iter(constants._stem_and_mix_spectra)
 
         self._i = 0
-
+        self._abs_stem_spectrum \
+            = np.empty(constants.transform_len, dtype=np.float32)
+        self._rotated_mix_spectrum \
+            = np.empty(constants.transform_len, dtype=np.complex64)
+        self._abs_stem_spectra_cumsum \
+            = np.empty(constants.cumsum_shape, dtype=np.float32)
+        self._rotated_mix_spectra_cumsum \
+            = np.empty(constants.cumsum_shape, dtype=np.complex64)
         self._eq_profile \
             = np.empty(constants.transform_len, dtype=np.complex64)
 
         self._handle_before_spectra()
-
-        # cumsums have to be 1 2d array each
 
     def __iter__(self):
         return self
@@ -181,10 +223,10 @@ class GenerateSingleEqProfile:
         return _SingleIterator(self.constants)
 
     def run(self):
-        for _ in self:
+        for eq_profile in self:
             pass
 
-        return self.eq_profile
+        return eq_profile
 
 
 class GenerateRunningEqProfile:

@@ -39,7 +39,7 @@ def hone_in_high(
         val_c = val_a + (val_a - val_b) * side_winner_mul
 
     logger(val_being_scored=val_c)
-    score_c = scoring_function(val_c)
+    score_c = scoring_function(val_c, logger=scoring_function_logger)
 
     while True:
         (val_a, score_a), (val_b, score_b), (val_c, score_c) \

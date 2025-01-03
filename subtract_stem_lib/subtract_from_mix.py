@@ -5,6 +5,10 @@ from .stem_in_mix import GenerateRunningStemInMix
 from .intermediate_in_mix import GenerateRunningIntermediateInMix
 
 
+def subtract_single_stem_from_mix():
+    ...
+
+
 def subtract_running_stem_from_mix(
     *,
     stem_audio, mix_audio,
@@ -28,6 +32,10 @@ def subtract_running_stem_from_mix(
     out_audio[start_sample:] -= stem_in_mix
 
     return out_audio
+
+
+def subtract_single_intermediate_from_mix():
+    ...
 
 
 def subtract_running_intermediate_from_mix(
