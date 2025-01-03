@@ -212,7 +212,7 @@ class GenerateSingleEqProfile:
         start_s=None, stop_s=None,
         fully_cover_all=False, centre=True,
     ):
-        self.constants = _SingleConstants(**sanitise_args({
+        self._constants = _SingleConstants(**sanitise_args({
             "sample_rate": sample_rate,
             "transform_len": transform_len,
             "start_s": start_s, "stop_s": stop_s,
@@ -238,7 +238,7 @@ class GenerateRunningEqProfile:
         fully_cover_all=True, centre=True,
         lookbehind_s=LOOKBEHIND_S, lookahead_s=LOOKAHEAD_S,
     ):
-        self.constants = _RunningConstants(**sanitise_args({
+        self._constants = _RunningConstants(**sanitise_args({
             "sample_rate": sample_rate,
             "transform_len": transform_len,
             "start_s": start_s, "stop_s": stop_s,

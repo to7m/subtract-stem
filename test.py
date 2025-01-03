@@ -1,4 +1,5 @@
 from fractions import Fraction
+import numpy as np
 
 from subtract_stem_lib import *
 
@@ -13,13 +14,18 @@ def load_audios():
 
 keys_audio, monitor_audio, bass_audio = load_audios()
 
-save_mono_audio("audio_path.wav", keys_audio, sample_rate=Fraction(48000))
 
-
-safe_reciprocal__c()
-safe_divide__cf()
-for x in GenerateSpectra(logger=True):
+for x in GenerateSpectra(
+    transforms_start_i=100, num_of_transforms=100, interval_len=500,
+    audio=keys_audio, window=
+    logger=True
+):
     print(x)
+
+
+raise SystemExit
+
+
 for x in GenerateStemAndMixSpectra(logger=True):
     print(x)
 x = GenerateSingleEqProfile(logger=True).run()

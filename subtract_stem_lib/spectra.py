@@ -1,5 +1,7 @@
+from fractions import Fraction
 import numpy as np
 
+from .defaults import TRANSFORM_LEN
 from .sanitisation import sanitise_args
 
 
@@ -67,21 +69,28 @@ class _Iterator:
 class GenerateSpectra:
     def __init__(
         self, *,
-        transforms_start_i, num_of_transforms, interval_len,
-        audio, window,
-        num_of_retained=1
+        audio, start_s, stop_s,
+        delay_audio_s=Fraction(0),
+        fully_cover_all=False, centre=True,
+        transform_len=TRANSFORM_LEN,
+        num_of_retained=1,
+        logger=None
     ):
-        self.constants = _Constants(**sanitise_args({
+        self._constants = _Constants(**sanitise_args({
             "transforms_start_i": transforms_start_i,
             "num_of_transforms": num_of_transforms,
             "interval_len": interval_len,
             "audio": audio,
             "window": window,
-            "num_of_retained": num_of_retained
+            "num_of_retained": num_of_retained,
+            "logger": logger
         }))
 
+        self.pre_delay_start_sample = +...
+        self.pre_delay_stop_sample = +...
+
     def __iter__(self):
-        return _Iterator(self.constants)
+        return _Iterator(self._constants)
 
 
 class GenerateStemAndMixSpectra:
@@ -91,19 +100,22 @@ class GenerateStemAndMixSpectra:
         num_of_iterations, interval_len,
         stem_audio, mix_audio,
         stem_window, mix_window,
-        stem_num_of_retained=1, mix_num_of_retained=1
+        stem_num_of_retained=1, mix_num_of_retained=1,
+        logger=None
     ):
         self.stem_spectra = Spectra(
             transforms_start_i=stem_transforms_start_i,
             num_of_transforms=num_of_iterations, interval_len=interval_len,
             audio=stem_audio, window=stem_window,
-            num_of_retained=stem_num_of_retained
+            num_of_retained=stem_num_of_retained,
+            logger=None
         )
         self.mix_spectra = Spectra(
             transforms_start_i=mix_transforms_start_i,
             num_of_transforms=num_of_iterations, interval_len=interval_len,
             audio=mix_audio, window=mix_window,
-            num_of_retained=mix_num_of_retained
+            num_of_retained=mix_num_of_retained,
+            logger=None
         )
 
     def __iter__(self):

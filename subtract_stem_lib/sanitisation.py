@@ -41,8 +41,8 @@ def _get_add_sanitiser_for_name(name):
     return add_sanitiser
 
 
-def _make_sanitise_audio(audio_type):
-    sanitise_audio = func_from_str(
+def _make_sanitise_mono_audio(audio_type):
+    sanitise_mono_audio = func_from_str(
         f"""
         def sanitise_{audio_type}_audio({audio_type}_audio):
             if type({audio_type}_audio) is not np.ndarray:
@@ -62,7 +62,7 @@ def _make_sanitise_audio(audio_type):
 
     decorator = _get_add_sanitiser_for_name(f"{audio_type}_audio")
 
-    return decorator(sanitise_audio)
+    return decorator(sanitise_mono_audio)
 
 
 def _make_sanitise_fraction(name):
@@ -117,9 +117,10 @@ def _make_sanitise_timestamp(name):
     return decorator(sanitise_timestamp)
 
 
-sanitise_intermediate_audio = _make_sanitise_audio("intermediate")
-sanitise_mix_audio = _make_sanitise_audio("mix")
-sanitise_stem_audio = _make_sanitise_audio("stem")
+sanitise_mono_audio = _make_sanitise_mono_audio("mono")
+sanitise_intermediate_audio = _make_sanitise_mono_audio("intermediate")
+sanitise_mix_audio = _make_sanitise_mono_audio("mix")
+sanitise_stem_audio = _make_sanitise_mono_audio("stem")
 
 sanitise_start_val = _make_sanitise_fraction("start_val")
 sanitise_start_add = _make_sanitise_fraction("start_add")

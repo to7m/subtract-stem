@@ -22,10 +22,12 @@ def _get_is_safe_to_divide__cf(
         = np.less_equal(intermediate_a, intermediate_b, out=intermediate_c)
 
     # denominator is non-zero
-    out = np.not_equal(indermediate_b, 0, out=out)
+    out = np.not_equal(intermediate_b, 0, out=out)
 
     # is safe
     out &= intermediate_c
+
+    return out
 
 
 def _get_is_safe_to_reciprocal__c(

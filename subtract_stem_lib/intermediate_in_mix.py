@@ -71,7 +71,7 @@ class GenerateRunningIntermediateInMix:
         lookbehind_s=LOOKBEHIND_S, lookahead_s=LOOKAHEAD_S,
         delay_stem_s=Fraction(0), delay_intermediate_s=Fraction(0)
     ):
-        self.constants = _RunningConstants(**sanitise_args({
+        self._constants = _RunningConstants(**sanitise_args({
             "stem_audio": stem_audio,
             "intermediate_audio": intermediate_audio,
             "mix_audio": mix_audio,
