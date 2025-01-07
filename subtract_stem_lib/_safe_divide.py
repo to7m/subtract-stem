@@ -15,10 +15,7 @@ def _get_is_safe_to_divide__cf(
     intermediate_a = np.abs(a, out=intermediate_a)
 
     # maximum allowable abs(a) vals
-    print("b", b)
-    print("max_abs_val", max_abs_val)
     intermediate_b = np.multiply(b, max_abs_val, out=intermediate_b)
-    print(f"{intermediate_b=}")
 
     # is low enough
     intermediate_c \

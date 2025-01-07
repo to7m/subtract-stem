@@ -37,8 +37,49 @@ class _SingleConstants:
 
 
 class _RunningConstants:
-    def __init__(self):
-        ...
+    def __init__(
+        self, *,
+        stem_audio, mix_audio, sample_rate,
+        start_s, stop_s,
+        delay_stem_s,
+        transform_len,
+        lookbehind_s, lookahead_s,
+        max_amplification,
+        logger
+    ):
+        self.transform_len = transform_len
+        self.max_amplification = max_amplification
+        self.logger = logger
+
+        interval_s = (transform_len // 2) / sample_rate
+        lookbehind_iterations = round(lookbehind_s / interval_s)
+        lookahead_iterations = round(lookahead_s / interval_s)
+
+        self.num_of_initialisation_iterations \
+            = lookbehind_iterations + lookahead_iterations
+
+        self.retained_len = lookahead_iterations + 1
+
+        self.stem_and_mix_spectra = GenerateStemAndMixSpectra(
+            stem_audio=stem_audio, mix_audio=mix_audio,
+            sample_rate=sample_rate,
+            start_s=start_s, stop_s=stop_s,
+            delay_stem_s=delay_stem_s,
+            transform_len=transform_len,
+            additional_iterations_before=lookbehind_iterations,
+            additional_iterations_after=lookahead_iterations,
+            stem_num_of_retained=self.retained_len
+        )
+
+        self.num_of_total_iterations \
+            = self.stem_and_mix_spectra.num_of_iterations
+        self.num_of_main_iterations = (
+            self.num_of_total_iterations
+            - self.num_of_initialisation_iterations
+        )
+
+        self.cumsum_len = self.num_of_initialisation_iterations + 2
+        self.cumsum_shape = self.cumsum_len, transform_len
 
 
 class _SingleIterator:
@@ -54,9 +95,9 @@ class _SingleIterator:
         self._rotated_mix_spectrum \
             = np.empty(constants.transform_len, dtype=np.complex64)
         self._abs_stem_spectra_sum \
-            = np.empty(constants.transform_len, dtype=np.float32)
+            = np.zeros(constants.transform_len, dtype=np.float32)
         self._rotated_mix_spectra_sum \
-            = np.empty(constants.transform_len, dtype=np.complex64)
+            = np.zeros(constants.transform_len, dtype=np.complex64)
 
         self._log_progress()
 
@@ -118,14 +159,25 @@ class _RunningIterator:
             = np.empty(constants.transform_len, dtype=np.float32)
         self._rotated_mix_spectrum \
             = np.empty(constants.transform_len, dtype=np.complex64)
+        self._retained_stem_spectra \
+            = [None for _ in range(constants.retained_len)]
         self._abs_stem_spectra_cumsum \
             = np.empty(constants.cumsum_shape, dtype=np.float32)
         self._rotated_mix_spectra_cumsum \
             = np.empty(constants.cumsum_shape, dtype=np.complex64)
+        self._abs_stem_spectra_sum \
+            = np.empty(constants.transform_len, dtype=np.float32)
+        self._rotated_mix_spectra_sum \
+            = np.empty(constants.transform_len, dtype=np.complex64)
+        self._safe_divide_intermediate_arrays \
+            = self._get_safe_divide_intermediate_arrays()
         self._eq_profile \
             = np.empty(constants.transform_len, dtype=np.complex64)
 
-        self._handle_before_spectra()
+        self._log_initialisation_progress()
+        self._initialisation_iterations()
+
+        self._log_main_progress()
 
     def __iter__(self):
         return self
@@ -139,8 +191,26 @@ class _RunningIterator:
         stem_spectrum = self._get_old_stem_spectrum()
 
         self._i += 1
+        self._log_main_progress()
 
         return eq_profile, stem_spectrum
+
+    def _get_safe_divide_intermediate_arrays(self):
+        return {
+            f"intermediate_{chr(ord('a') + i)}":
+                np.empty(self._constants.transform_len, dtype=dtype)
+            for i, dtype in enumerate([np.float32, np.float32, bool, bool])
+        }
+
+    def _log_initialisation_progress(self):
+        self._constants.logger(
+            msg=(
+                f"pairs of initialisation spectra made and rotated: "
+                f"{self._i} of "
+                f"{self._constants.num_of_initialisation_iterations}"
+            ),
+            iteration=self._i
+        )
 
     def _add_to_cumsum(self, spectrum, *, cumsum):
         curr_i = self._i % self._constants.cumsum_len
@@ -152,8 +222,9 @@ class _RunningIterator:
 
     def _common_routine(self):
         stem_spectrum, mix_spectrum = next(self._stem_and_mix_spectra_iter)
-        self._retained_stem_spectra[self._i % self._constants.retained_len] \
-            = stem_spectrum
+
+        retained_i = self._i % self._constants.retained_len
+        self._retained_stem_spectra[retained_i] = stem_spectrum
 
         abs_stem_spectrum, rotated_mix_spectrum = ataabtrnfatbaa(
             stem_spectrum, mix_spectrum,
@@ -167,13 +238,23 @@ class _RunningIterator:
             rotated_mix_spectrum, cumsum=self._rotated_mix_spectra_cumsum
         )
 
-    def _handle_before_spectra(self):
-        while (
-            self._i
-            < self._constants.num_of_initialisation_iterations
-        ):
+    def _initialisation_iterations(self):
+        while self._i < self._constants.num_of_initialisation_iterations:
             self._common_routine()
+
             self._i += 1
+            self._log_initialisation_progress()
+
+    def _log_main_progress(self):
+        main_i = self._i - self._constants.num_of_initialisation_iterations
+
+        self._constants.logger(
+            msg=(
+                f"number of EQ profiles made: {main_i} of "
+                f"{self._constants.num_of_main_iterations}"
+            ),
+            iteration=main_i
+        )
 
     def _get_sum(self, *, cumsum, out):
         curr_i = self._i % self._constants.cumsum_len
@@ -199,14 +280,13 @@ class _RunningIterator:
         return safe_divide__cf(
             rotated_mix_spectra_sum, abs_stem_spectra_sum,
             max_abs_val=self._constants.max_amplification,
-            **self._intermediate_arrays,
+            **self._safe_divide_intermediate_arrays,
             out=self._eq_profile
         )
 
     def _get_old_stem_spectrum(self):
         return self._retained_stem_spectra[
-            (self._i - self._constants.num_of_lookahead_transforms)
-            % self._constants.retained_len
+            (self._i + 1) % self._constants.retained_len
         ]
 
 
@@ -232,6 +312,8 @@ class GenerateSingleEqProfile:
             })
         )
 
+        self.num_of_iterations = self._constants.num_of_iterations
+
     def __iter__(self):
         return _SingleIterator(self._constants)
 
@@ -250,12 +332,25 @@ class GenerateRunningEqProfile:
         delay_stem_s=Fraction(0),
         transform_len=TRANSFORM_LEN,
         lookbehind_s=LOOKBEHIND_S, lookahead_s=LOOKAHEAD_S,
+        max_amplification=MAX_AMPLIFICATION,
         logger=None
     ):
-        ...
+        self._constants = _RunningConstants(
+            stem_audio=stem_audio, mix_audio=mix_audio,
+            sample_rate=sample_rate,
+            start_s=start_s, stop_s=stop_s,
+            delay_stem_s=delay_stem_s,
+            transform_len=transform_len,
+            **sanitise_args({
+                "lookbehind_s": lookbehind_s, "lookahead_s": lookahead_s,
+                "max_amplification": max_amplification,
+                "logger": logger
+            })
+        )
+
+        self.num_of_initialisation_iterations \
+            = self._constants.num_of_initialisation_iterations
+        self.num_of_main_iterations = self._constants.num_of_main_iterations
 
     def __iter__(self):
-        stem_and_mix_spectra_iter = iter(self._stem_and_mix_spectra)
-
-        for stem_spectum, mix_spectrum in zip(self._stem_and_mix_spectra):
-            ...
+        return _RunningIterator(self._constants)

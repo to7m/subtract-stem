@@ -1,6 +1,8 @@
 from fractions import Fraction
 
 
+DEFAULT_DELAY_STEM_S_START_ADD = Fraction(3, 1000)
+DEFAULT_MIN_DIFF_S = Fraction(1, 1_000_000)
 LOOKBEHIND_S = Fraction(30)
 LOOKAHEAD_S = Fraction(30)
 MAX_AMPLIFICATION = 100.0
