@@ -11,10 +11,11 @@ def logger(msg, *, iteration=None, **kwargs):
     if iteration is not None and iteration % 100 != 0:
         return
 
-    if kwargs:
-        print(f"LOG  {msg}  {kwargs}")
-    else:
-        print(f"LOG  {msg}")
+    if msg is not None:
+        if kwargs:
+            print(f"LOG  {msg}  {kwargs}")
+        else:
+            print(f"LOG  {msg}")
 
     return logger
 
@@ -27,7 +28,13 @@ def load_audios():
     return keys_audio, monitor_audio, bass_audio
 
 
-keys_audio, monitor_audio, bass_audio = load_audios()
+#keys_audio, monitor_audio, bass_audio = load_audios()
+
+for val, score in hone_in(lambda x: (x-4.1)**2, logger=logger):
+    print(val, score)
+
+
+raise SystemExit
 
 find_delay_stem_s(logger=logger)
 
