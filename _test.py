@@ -19,12 +19,12 @@ monitor_audio, _ = load_audio(raw_dir / "monitor.wav")
 keys_to_monitor_delay_s = find_delay_stem_s(
     stem_audio=keys_audio, mix_audio=monitor_audio,
     start_s=1, stop_s=-1,
-    logger=True
+    logger=logger
 )
 keys_to_monitor_eq_profile = GetEqProfile(
     stem_audio=keys_audio, mix_audio=monitor_audio,
     start_s=1, stop_s=-1, delay_stem_s=keys_to_monitor_delay_s,
-    logger=True
+    logger=logger
 ).run()
 monitor_to_keys_eq_profile = safe_reciprocal(keys_to_monitor_eq_profile)
 

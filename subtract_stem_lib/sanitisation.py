@@ -15,30 +15,39 @@ def _logger_print(**kwargs):
     return _logger_print
 
 
-def _parse_timestamp(ts):
-    if ts is None:
-        raise TypeError("None is not a valid timestamp")
-    if type(ts) is str:
-        seconds = Fraction(0)
-        for unit_str in ts.split(':'):
-            seconds *= 60
-            seconds += Fraction(unit_str)
-
-        return seconds
-    else:
-        return Fraction(ts)
-
-
-sanitisers = {}
+_sanitisers = {}
 
 
 def _get_add_sanitiser_for_name(name):
     def add_sanitiser(sanitiser_function):
-        sanitisers[name] = sanitiser_function
+        _sanitisers[name] = sanitiser_function
 
         return sanitiser_function
 
     return add_sanitiser
+
+
+def _make_sanitise_int(name, *, min_=None):
+    if min_ is None:
+        min_action = ""
+    else:
+        min_action = f"""
+            if {name} < {min_}:
+                raise ValueError("{name} should be at least {min_}")
+        """
+
+    sanitise_int_ge_1 = func_from_str(
+        f"""
+        def sanitise_{name}({name}):
+            {name} = int({name})
+            {min_action}
+            return {name}
+        """
+    )
+
+    decorator = _get_add_sanitiser_for_name(name)
+
+    return decorator(sanitise_int_ge_1)
 
 
 def _make_sanitise_mono_audio(audio_type):
@@ -52,7 +61,8 @@ def _make_sanitise_mono_audio(audio_type):
 
             if len({audio_type}_audio.shape) != 1:
                 raise ValueError(
-                    "{audio_type}_audio should contain 1 channel"
+                    "{audio_type}_audio should be 1-D and therefore contain "
+                    "1 channel"
                 )
 
             return {audio_type}_audio
@@ -65,51 +75,44 @@ def _make_sanitise_mono_audio(audio_type):
     return decorator(sanitise_mono_audio)
 
 
-def _make_sanitise_fraction(name):
-    sanitise_fraction = func_from_str(
-        f"""
-        def sanitise_{name}({name}):
-            return Fraction({name})
-        """,
-        globals_={"Fraction": Fraction}
-    )
+def _make_sanitise_timestamp(name, *, allow_none=False, allow_negative=True):
+    if allow_none:
+        none_action = "return None"
+    else:
+        none_action = f"raise TypeError('{name} must not be None')"
 
-    decorator = _get_add_sanitiser_for_name(name)
+    if allow_negative:
+        negative_action = (
+            f"""
+            return ts
+            """
+        )
+    else:
+        negative_action = (
+            f"""
+            if ts < 0:
+                raise ValueError('{name} should not be less than 0')
+            else:
+                return ts
+            """
+        )
 
-    return decorator(sanitise_fraction)
-
-
-def _make_sanitise_lookbehindahead_s(direction):
-    sanitise_lookbehindahead_s = func_from_str(
-        f"""
-        def sanitise_look{direction}_s(look{direction}_s):
-            look{direction}_s = _parse_timestamp(look{direction}_s)
-
-            if look{direction}_s < 0:
-                raise ValueError(
-                    "look{direction}_s should not be less than 0"
-                )
-
-            return look{direction}_s
-        """,
-        globals_={"_parse_timestamp": _parse_timestamp}
-    )
-
-    decorator = _get_add_sanitiser_for_name(f"look{direction}_s")
-
-    return decorator(sanitise_lookbehindahead_s)
-
-
-def _make_sanitise_timestamp(name):
     sanitise_timestamp = func_from_str(
         f"""
         def sanitise_{name}({name}):
             if {name} is None:
-                return None
+                {none_action}
+
+            if type({name}) is str:
+                ts = Fraction(0)
+                for unit_str in {name}.split(':'):
+                    ts *= 60
+                    ts += Fraction(unit_str)
             else:
-                return _parse_timestamp({name})
+                ts = Fraction({name})
+            {negative_action}
         """,
-        globals_={"_parse_timestamp": _parse_timestamp}
+        globals_={"Fraction": Fraction}
     )
 
     decorator = _get_add_sanitiser_for_name(name)
@@ -117,25 +120,41 @@ def _make_sanitise_timestamp(name):
     return decorator(sanitise_timestamp)
 
 
+sanitise_additional_iterations_before \
+    = _make_sanitise_int("additional_iterations_before", min_=0)
+sanitise_additional_iterations_after \
+    = _make_sanitise_int("additional_iterations_after", min_=0)
+
+sanitise_num_of_retained = _make_sanitise_int("num_of_retained", min_=1)
+sanitise_stem_num_of_retained \
+    = _make_sanitise_int("stem_num_of_retained", min_=1)
+sanitise_mix_num_of_retained \
+    = _make_sanitise_int("mix_num_of_retained", min_=1)
+
 sanitise_mono_audio = _make_sanitise_mono_audio("mono")
 sanitise_intermediate_audio = _make_sanitise_mono_audio("intermediate")
 sanitise_mix_audio = _make_sanitise_mono_audio("mix")
 sanitise_stem_audio = _make_sanitise_mono_audio("stem")
 
-sanitise_start_val = _make_sanitise_fraction("start_val")
-sanitise_start_add = _make_sanitise_fraction("start_add")
-sanitise_min_diff = _make_sanitise_fraction("min_diff")
-sanitise_side_winner_mul = _make_sanitise_fraction("side_winner_mul")
+sanitise_start_val = _make_sanitise_timestamp("start_val")
+sanitise_start_add = _make_sanitise_timestamp("start_add")
+sanitise_min_diff = _make_sanitise_timestamp("min_diff")
 
-sanitise_lookahead_s = _make_sanitise_lookbehindahead_s("ahead")
-sanitise_lookahead_s = _make_sanitise_lookbehindahead_s("behind")
+sanitise_lookahead_s \
+    = _make_sanitise_timestamp("lookahead_s", allow_negative=False)
+sanitise_lookbehind_s \
+    = _make_sanitise_timestamp("lookbehind_s", allow_negative=False)
 
+sanitise_delay_audio_s = _make_sanitise_timestamp("delay_audio_s")
+sanitise_delay_stem_s = _make_sanitise_timestamp("delay_stem_s")
+sanitise_delay_intermediate_s \
+    = _make_sanitise_timestamp("delay_intermediate_s")
 sanitise_delay_stem_s_start_val \
     = _make_sanitise_timestamp("delay_stem_s_start_val")
 sanitise_delay_stem_s_start_add \
     = _make_sanitise_timestamp("delay_stem_s_start_add")
 sanitise_start_s = _make_sanitise_timestamp("start_s")
-sanitise_stop_s = _make_sanitise_timestamp("stop_s")
+sanitise_stop_s = _make_sanitise_timestamp("stop_s", allow_none=True)
 
 
 @_get_add_sanitiser_for_name("logger")
@@ -146,6 +165,16 @@ def sanitise_logger(logger):
         return _logger_print
     else:
         return _logger_ignore
+
+
+@_get_add_sanitiser_for_name("max_amplification")
+def sanitise_max_amplification(max_amplification):
+    max_amplification = float(max_amplification)
+
+    if max_amplification <= 0:
+        raise ValueError("max_amplification should be greater than 0")
+
+    return max_amplification
 
 
 @_get_add_sanitiser_for_name("path")
@@ -171,6 +200,16 @@ def sanitise_scoring_function(scoring_function):
         raise TypeError("scoring_function should be a callable")
 
 
+@_get_add_sanitiser_for_name("side_winner_mul")
+def sanitise_side_winner_mul(side_winner_mul):
+    side_winner_mul = Fraction(side_winner_mul)
+
+    if side_winner_mul <= 1:
+        raise ValueError("side_winner_mul should be greater than 1")
+
+    return side_winner_mul
+
+
 @_get_add_sanitiser_for_name("transform_len")
 def sanitise_transform_len(transform_len):
     transform_len = int(transform_len)
@@ -190,8 +229,8 @@ def sanitise_args(args_dict):
 
     sanitised_args = {}
     for key, val in args_dict.items():
-        if key in sanitisers:
-            sanitised_args[key] = sanitisers[key](val)
+        if key in _sanitisers:
+            sanitised_args[key] = _sanitisers[key](val)
         else:
             raise KeyError(f"could not sanitise argument ‘{key}’")
 

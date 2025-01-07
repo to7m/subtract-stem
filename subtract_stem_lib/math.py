@@ -1,4 +1,5 @@
 from math import atan2, pi
+import numpy as np
 
 from ._safe_divide import safe_divide__cf, safe_reciprocal__c
 

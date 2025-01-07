@@ -1,50 +1,44 @@
 import numpy as np
+from fractions import Fraction
 
-from .defaults import TRANSFORM_LEN, LOOKBEHIND_S, LOOKAHEAD_S
-from .sanitisation import sanitise_args
+from .defaults import (
+    LOOKBEHIND_S, LOOKAHEAD_S, MAX_AMPLIFICATION, TRANSFORM_LEN
+)
+from .sanitisation import sanitise_args, sanitise_logger
 from .math import (
     ataabtrnfatbaa, from_abs_and_angle, safe_divide__cf, to_abs_and_angle
 )
+from .spectra import GenerateStemAndMixSpectra
 
 
 class _SingleConstants:
-    def __init__(self):
-        ...
+    def __init__(
+        self, *,
+        stem_audio, mix_audio, sample_rate,
+        start_s, stop_s,
+        delay_stem_s,
+        transform_len,
+        max_amplification,
+        logger
+    ):
+        self.transform_len = transform_len
+        self.max_amplification = max_amplification
+        self.logger = logger
+
+        self.stem_and_mix_spectra = GenerateStemAndMixSpectra(
+            stem_audio=stem_audio, mix_audio=mix_audio,
+            sample_rate=sample_rate,
+            start_s=start_s, stop_s=stop_s,
+            delay_stem_s=delay_stem_s,
+            transform_len=transform_len,
+        )
+        self.num_of_iterations = self.stem_and_mix_spectra.num_of_iterations
+        self.last_iteration_i = self.num_of_iterations - 1
 
 
 class _RunningConstants:
-    def __init__(
-        self, *,
-        sample_rate, transform_len, lookbehind_s, lookahead_s
-    ):
-        _transforms_interval_s = transform_len / sample_rate
-
-        self.num_of_before_iterations \
-            = round(lookbehind_s / _transforms_interval_s)
-        self.num_of_after_iterations \
-            = round(lookahead_s / _transforms_interval_s)
-        self.num_of_initialisation_iterations \
-            = self.num_of_before_iterations + self.num_of_after_iterations
-
-    def _(self):
-
-        subsequent_num_of_transforms \
-            = round(ideal_num_of_subsequent_transforms)
-
-        centre_of_first_transform = (
-            profile_middle_sample
-            - subsequent_num_of_transforms * self.interval / 2
-        )
-        mix_transforms_start_i \
-            = round(centre_of_first_transform - len(self.mix_window) // 2)
-
-        stem_transforms_start_i \
-            = mix_transforms_start_i - audio_data.delay_stem_samples_whole
-        num_of_iterations = 1 + subsequent_num_of_iterations
-
-        return (
-            stem_transforms_start_i, mix_transforms_start_i, num_of_iterations
-        )
+    def __init__(self):
+        ...
 
 
 class _SingleIterator:
@@ -52,7 +46,7 @@ class _SingleIterator:
         self._constants = constants
 
         self._stem_and_mix_spectra_iter \
-            = iter(constants._stem_and_mix_spectra)
+            = iter(constants.stem_and_mix_spectra)
 
         self._i = 0
         self._abs_stem_spectrum \
@@ -63,6 +57,8 @@ class _SingleIterator:
             = np.empty(constants.transform_len, dtype=np.float32)
         self._rotated_mix_spectra_sum \
             = np.empty(constants.transform_len, dtype=np.complex64)
+
+        self._log_progress()
 
     def __iter__(self):
         return self
@@ -80,6 +76,15 @@ class _SingleIterator:
 
             return None
 
+    def _log_progress(self):
+        self._constants.logger(
+            msg=(
+                f"pairs of spectra made and rotated: {self._i} of "
+                f"{self._constants.num_of_iterations}"
+            ),
+            iteration=self._i
+        )
+
     def _routine(self):
         stem_spectrum, mix_spectrum = next(self._stem_and_mix_spectra_iter)
 
@@ -92,6 +97,7 @@ class _SingleIterator:
         self._rotated_mix_spectra_sum += rotated_mix_spectrum
 
         self._i += 1
+        self._log_progress()
 
     def _calculate_eq_profile(self):
         return safe_divide__cf(
@@ -105,7 +111,7 @@ class _RunningIterator:
         self._constants = constants
 
         self._stem_and_mix_spectra_iter \
-            = iter(constants._stem_and_mix_spectra)
+            = iter(constants.stem_and_mix_spectra)
 
         self._i = 0
         self._abs_stem_spectrum \
@@ -207,20 +213,27 @@ class _RunningIterator:
 class GenerateSingleEqProfile:
     def __init__(
         self, *,
-        sample_rate,
+        stem_audio, mix_audio, sample_rate,
+        start_s=Fraction(0), stop_s=None,
+        delay_stem_s=Fraction(0),
         transform_len=TRANSFORM_LEN,
-        start_s=None, stop_s=None,
-        fully_cover_all=False, centre=True,
+        max_amplification=MAX_AMPLIFICATION,
+        logger=None
     ):
-        self._constants = _SingleConstants(**sanitise_args({
-            "sample_rate": sample_rate,
-            "transform_len": transform_len,
-            "start_s": start_s, "stop_s": stop_s,
-            "fully_cover_all": fully_cover_all, "centre": centre
-        }))
+        self._constants = _SingleConstants(
+            stem_audio=stem_audio, mix_audio=mix_audio,
+            sample_rate=sample_rate,
+            start_s=start_s, stop_s=stop_s,
+            delay_stem_s=delay_stem_s,
+            transform_len=transform_len,
+            **sanitise_args({
+                "max_amplification": max_amplification,
+                "logger": logger
+            })
+        )
 
     def __iter__(self):
-        return _SingleIterator(self.constants)
+        return _SingleIterator(self._constants)
 
     def run(self):
         for eq_profile in self:
@@ -232,19 +245,17 @@ class GenerateSingleEqProfile:
 class GenerateRunningEqProfile:
     def __init__(
         self, *,
-        sample_rate,
+        stem_audio, mix_audio, sample_rate,
+        start_s=Fraction(0), stop_s=None,
+        delay_stem_s=Fraction(0),
         transform_len=TRANSFORM_LEN,
-        start_s=None, stop_s=None,
-        fully_cover_all=True, centre=True,
         lookbehind_s=LOOKBEHIND_S, lookahead_s=LOOKAHEAD_S,
+        logger=None
     ):
-        self._constants = _RunningConstants(**sanitise_args({
-            "sample_rate": sample_rate,
-            "transform_len": transform_len,
-            "start_s": start_s, "stop_s": stop_s,
-            "fully_cover_all": fully_cover_all, "centre": centre,
-            "lookbehind_s": lookbehind_s, "lookahead_s": lookahead_s
-        }))
+        ...
 
     def __iter__(self):
-        return _Iterator(self.constants)
+        stem_and_mix_spectra_iter = iter(self._stem_and_mix_spectra)
+
+        for stem_spectum, mix_spectrum in zip(self._stem_and_mix_spectra):
+            ...
