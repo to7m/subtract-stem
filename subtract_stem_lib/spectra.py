@@ -104,7 +104,7 @@ class _Iterator:
 
         self._i = 0
         self._block_start_i = self._block_stop_i = None
-        self._windowed = np.empty(constants.transform_len, dtype=np.float32)
+        self._grain = np.empty(constants.transform_len, dtype=np.float32)
         self._spectra = [
             np.empty(constants.transform_len, dtype=np.complex64)
             for _ in range(constants.num_of_retained)
@@ -120,7 +120,7 @@ class _Iterator:
             raise StopIteration
 
         self._set_block_start_stop_indices()
-        self._fill_windowed()
+        self._fill_grain()
 
         spectrum = self._spectra[self._i % self._constants.num_of_retained]
         np.fft.fft(self._windowed, out=spectrum)
@@ -151,7 +151,7 @@ class _Iterator:
         break_full_to_empty_i \
             = max(self._constants.audio_len - self._block_start_i, 0)
 
-        self._windowed[:break_empty_to_full_i] = 0
+        self._grain[:break_empty_to_full_i] = 0
         np.multiply(
             self._constants.mono_audio[
                 max(self._block_start_i, 0):max(self._block_stop_i, 0)
@@ -159,9 +159,9 @@ class _Iterator:
             self._constants.window[
                 break_empty_to_full_i:break_full_to_empty_i
             ],
-            out=self._windowed[break_empty_to_full_i:break_full_to_empty_i]
+            out=self._grain[break_empty_to_full_i:break_full_to_empty_i]
         )
-        self._windowed[break_full_to_empty_i:] = 0
+        self._grain[break_full_to_empty_i:] = 0
 
 
 class GenerateSpectra:
