@@ -7,15 +7,12 @@ from subtract_stem_lib import *
 np.set_printoptions(suppress=True)
 
 
-def logger(msg, *, iteration=None, **kwargs):
-    if iteration is not None and iteration % 100 != 0:
+def logger(msg=None, **kwargs):
+    key = "inner_iteration" if "delay_stem_s" in kwargs else "iteration"
+    if key in kwargs and kwargs[key] % 1000 != 0:
         return
 
-    if msg is not None:
-        if kwargs:
-            print(f"LOG  {msg}  {kwargs}")
-        else:
-            print(f"LOG  {msg}")
+    print(f"LOG  {msg}")
 
     return logger
 
@@ -28,17 +25,27 @@ def load_audios():
     return keys_audio, monitor_audio, bass_audio
 
 
-#keys_audio, monitor_audio, bass_audio = load_audios()
+keys_audio, monitor_audio, bass_audio = load_audios()
 
-for val, score in hone_in(lambda x: (x-4.1)**2, logger=logger):
-    print(val, score)
-
-
-raise SystemExit
-
-find_delay_stem_s(logger=logger)
+stem_in_mix, delay_samples = GenerateSingleStemInMix(
+    stem_audio=keys_audio, sample_rate=48000,
+    logger=logger
+).run()
+print(stem_in_mix,delay_samples)
 
 raise SystemExit
+
+GenerateRunningStemInMix(
+    logger=logger
+)
+
+GenerateSingleIntermediateInMix(
+    logger=logger
+)
+
+GenerateRunningIntermediateInMix(
+    logger=logger
+)
 
 subtract_single_stem_from_mix(logger=logger)
 

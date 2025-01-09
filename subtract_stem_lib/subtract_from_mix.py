@@ -1,12 +1,16 @@
 from fractions import Fraction
 
 from .defaults import LOOKBEHIND_S, LOOKAHEAD_S
-from .stem_in_mix import GenerateRunningStemInMix
-from .intermediate_in_mix import GenerateRunningIntermediateInMix
+from .stem_in_mix import (
+    GenerateSingleStemInMix, GenerateRunningStemInMix
+)
+from .intermediate_in_mix import (
+    GenerateSingleIntermediateInMix, GenerateRunningIntermediateInMix
+)
 
 
 def subtract_single_stem_from_mix():
-    ...
+    Generate
 
 
 def subtract_running_stem_from_mix(

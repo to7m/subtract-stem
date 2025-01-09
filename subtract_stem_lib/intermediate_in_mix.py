@@ -91,3 +91,8 @@ class GenerateRunningIntermediateInMix:
             pass
 
         return intermediate_in_mix, start_sample
+
+
+
+intermediate_to_stem_eq_profile_spec="generate_single" or "generate_running" or eq_profile or iterable
+stem_to_mix_eq_profile="generate_single" or "generate_running"

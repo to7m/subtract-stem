@@ -75,25 +75,26 @@ def _make_sanitise_mono_audio(audio_type):
     return decorator(sanitise_mono_audio)
 
 
-def _make_sanitise_timestamp(name, *, allow_none=False, allow_negative=True):
+def _make_sanitise_timestamp(name, *, allow_none=False, range_="any"):
     if allow_none:
         none_action = "return None"
     else:
         none_action = f"raise TypeError('{name} must not be None')"
 
-    if allow_negative:
-        negative_action = (
-            f"""
-            return ts
-            """
-        )
-    else:
-        negative_action = (
+    if range_ == "any":
+        range_action = ""
+    elif range_ == ">=0":
+        range_action = (
             f"""
             if ts < 0:
-                raise ValueError('{name} should not be less than 0')
-            else:
-                return ts
+                raise ValueError("{name} should not be less than 0")
+            """
+        )
+    elif range_ == ">0":
+        range_action = (
+            f"""
+            if ts <= 0:
+                raise ValueError("{name} should be greater than 0")
             """
         )
 
@@ -110,7 +111,8 @@ def _make_sanitise_timestamp(name, *, allow_none=False, allow_negative=True):
                     ts += Fraction(unit_str)
             else:
                 ts = Fraction({name})
-            {negative_action}
+            {range_action}
+            return ts
         """,
         globals_={"Fraction": Fraction}
     )
@@ -138,12 +140,11 @@ sanitise_stem_audio = _make_sanitise_mono_audio("stem")
 
 sanitise_start_val = _make_sanitise_timestamp("start_val")
 sanitise_start_add = _make_sanitise_timestamp("start_add")
-sanitise_min_diff = _make_sanitise_timestamp("min_diff")
+sanitise_min_diff = _make_sanitise_timestamp("min_diff", range_=">0")
+sanitise_min_diff_s = _make_sanitise_timestamp("min_diff_s", range_=">0")
 
-sanitise_lookahead_s \
-    = _make_sanitise_timestamp("lookahead_s", allow_negative=False)
-sanitise_lookbehind_s \
-    = _make_sanitise_timestamp("lookbehind_s", allow_negative=False)
+sanitise_lookahead_s = _make_sanitise_timestamp("lookahead_s", range_=">=0")
+sanitise_lookbehind_s = _make_sanitise_timestamp("lookbehind_s", range_=">=0")
 
 sanitise_delay_audio_s = _make_sanitise_timestamp("delay_audio_s")
 sanitise_delay_stem_s = _make_sanitise_timestamp("delay_stem_s")
@@ -155,6 +156,9 @@ sanitise_delay_stem_s_start_add \
     = _make_sanitise_timestamp("delay_stem_s_start_add")
 sanitise_start_s = _make_sanitise_timestamp("start_s")
 sanitise_stop_s = _make_sanitise_timestamp("stop_s", allow_none=True)
+
+
+_get_add_sanitiser_for_name("aim_lowest")(bool)
 
 
 @_get_add_sanitiser_for_name("logger")

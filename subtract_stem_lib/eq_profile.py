@@ -21,10 +21,6 @@ class _SingleConstants:
         max_amplification,
         logger
     ):
-        self.transform_len = transform_len
-        self.max_amplification = max_amplification
-        self.logger = logger
-
         self.stem_and_mix_spectra = GenerateStemAndMixSpectra(
             stem_audio=stem_audio, mix_audio=mix_audio,
             sample_rate=sample_rate,
@@ -32,6 +28,11 @@ class _SingleConstants:
             delay_stem_s=delay_stem_s,
             transform_len=transform_len,
         )
+
+        self.transform_len = transform_len
+        self.max_amplification = max_amplification
+        self.logger = logger
+
         self.num_of_iterations = self.stem_and_mix_spectra.num_of_iterations
         self.last_iteration_i = self.num_of_iterations - 1
 
@@ -47,19 +48,7 @@ class _RunningConstants:
         max_amplification,
         logger
     ):
-        self.transform_len = transform_len
-        self.max_amplification = max_amplification
-        self.logger = logger
-
-        interval_s = (transform_len // 2) / sample_rate
-        lookbehind_iterations = round(lookbehind_s / interval_s)
-        lookahead_iterations = round(lookahead_s / interval_s)
-
-        self.num_of_initialisation_iterations \
-            = lookbehind_iterations + lookahead_iterations
-
         self.retained_len = lookahead_iterations + 1
-
         self.stem_and_mix_spectra = GenerateStemAndMixSpectra(
             stem_audio=stem_audio, mix_audio=mix_audio,
             sample_rate=sample_rate,
@@ -71,15 +60,36 @@ class _RunningConstants:
             stem_num_of_retained=self.retained_len
         )
 
-        self.num_of_total_iterations \
-            = self.stem_and_mix_spectra.num_of_iterations
-        self.num_of_main_iterations = (
+        self._sample_rate = sample_rate
+        self.transform_len = transform_len
+        self._lookbehind_s, self._lookahead_s = lookbehind_s, lookahead_s
+        self.max_amplification = max_amplification
+        self.logger = logger
+
+        (
+            self.num_of_initialisation_iterations,
+            self.num_of_main_iterations,
             self.num_of_total_iterations
-            - self.num_of_initialisation_iterations
-        )
+        ) = self._get_nums_of_iterations_for_stages()
 
         self.cumsum_len = self.num_of_initialisation_iterations + 2
         self.cumsum_shape = self.cumsum_len, transform_len
+
+    def _get_nums_of_iterations_for_stages(self):
+        interval_s = (self.transform_len // 2) / self._sample_rate
+        num_of_lookbehind_iterations = round(self._lookbehind_s / interval_s)
+        num_of_lookahead_iterations = round(self._lookahead_s / interval_s)
+
+        num_of_total_iterations = self.stem_and_mix_spectra.num_of_iterations
+        num_of_initialisation_iterations \
+            = num_of_lookbehind_iterations + num_of_lookahead_iterations
+        num_of_main_iterations \
+            = num_of_total_iterations - num_of_initialisation_iterations
+
+        return (
+            num_of_initialisation_iterations, num_of_main_iterations,
+            num_of_total_iterations
+        )
 
 
 class _SingleIterator:
@@ -118,12 +128,14 @@ class _SingleIterator:
             return None
 
     def _log_progress(self):
+        num_of_iterations = self._constants.num_of_iterations
+
         self._constants.logger(
             msg=(
                 f"pairs of spectra made and rotated: {self._i} of "
-                f"{self._constants.num_of_iterations}"
+                f"{num_of_iterations}"
             ),
-            iteration=self._i
+            iteration=self._i, num_of_iterations=num_of_iterations
         )
 
     def _routine(self):
@@ -203,13 +215,15 @@ class _RunningIterator:
         }
 
     def _log_initialisation_progress(self):
+        num_of_iterations = self._constants.num_of_initialisation_iterations
+
         self._constants.logger(
             msg=(
                 f"pairs of initialisation spectra made and rotated: "
-                f"{self._i} of "
-                f"{self._constants.num_of_initialisation_iterations}"
+                f"{self._i} of {num_of_iterations}"
             ),
-            iteration=self._i
+            iteration=self._i,
+            num_of_initialisation_iterations=num_of_iterations
         )
 
     def _add_to_cumsum(self, spectrum, *, cumsum):
@@ -247,13 +261,13 @@ class _RunningIterator:
 
     def _log_main_progress(self):
         main_i = self._i - self._constants.num_of_initialisation_iterations
+        num_of_iterations = self._constants.num_of_main_iterations
 
         self._constants.logger(
             msg=(
-                f"number of EQ profiles made: {main_i} of "
-                f"{self._constants.num_of_main_iterations}"
+                f"number of EQ profiles made: {main_i} of {num_of_iterations}"
             ),
-            iteration=main_i
+            iteration=main_i, num_of_main_iterations=num_of_iterations
         )
 
     def _get_sum(self, *, cumsum, out):

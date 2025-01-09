@@ -131,12 +131,11 @@ class _Iterator:
         return spectrum
 
     def _log_progress(self):
+        num_of_iterations = self._constants.num_of_iterations
+
         self._constants.logger(
-            msg=(
-                f"spectra made: {self._i} of "
-                f"{self._constants.num_of_iterations}"
-            ),
-            iteration=self._i
+            msg=f"spectra made: {self._i} of {num_of_iterations}",
+            iteration=self._i, num_of_iterations=num_of_iterations
         )
 
     def _set_block_start_stop_indices(self):
@@ -214,7 +213,7 @@ class GenerateStemAndMixSpectra:
             "mix_num_of_retained": mix_num_of_retained
         })
 
-        logger = self._wrap_logger(sanitise_logger(logger))
+        wrapped_logger = self._wrap_logger(sanitise_logger(logger))
 
         self._stem_spectra = GenerateSpectra(
             mono_audio=stem_audio, sample_rate=sample_rate,
@@ -228,12 +227,11 @@ class GenerateStemAndMixSpectra:
         self._mix_spectra = GenerateSpectra(
             mono_audio=mix_audio, sample_rate=sample_rate,
             start_s=start_s, stop_s=stop_s,
-            delay_audio_s=Fraction(0),
             transform_len=transform_len,
             additional_iterations_before=additional_iterations_before,
             additional_iterations_after=additional_iterations_after,
             num_of_retained=mix_num_of_retained,
-            logger=logger
+            logger=wrapped_logger
         )
 
         self.num_of_iterations = self._mix_spectra.num_of_iterations
@@ -246,13 +244,13 @@ class GenerateStemAndMixSpectra:
         return zip(self._stem_spectra, self._mix_spectra)
 
     def _wrap_logger(self, logger):
-        def outer_logger(msg, iteration):
+        def wrapped_logger(msg, iteration, num_of_iterations):
             logger(
                 msg=(
                     f"pairs of spectra made: {iteration} of "
-                    f"{self.num_of_iterations}"
+                    f"{num_of_iterations}"
                 ),
-                iteration=iteration
+                iteration=iteration, num_of_iterations=num_of_iterations
             )
 
-        return outer_logger
+        return wrapped_logger
