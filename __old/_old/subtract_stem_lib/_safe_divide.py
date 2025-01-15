@@ -22,9 +22,68 @@ def _get_is_safe_to_divide__cf(
         = np.less_equal(intermediate_a, intermediate_b, out=intermediate_c)
 
     # denominator is non-zero
-    out = np.not_equal(intermediate_b, 0, out=out)
+    out = np.not_equal(b, 0, out=out)
 
     # is safe
+    out &= intermediate_c
+
+    return out
+
+
+def _get_is_safe_to_divide__fc(
+    a,  # float32
+    b,  # complex64,
+    *,
+    max_abs_val,
+    intermediate_a,  # float32
+    intermediate_b,  # bool
+    out  # bool
+):
+    # abs(b) vals
+    intermediate_a = np.abs(b, out=intermediate_a)
+
+    # maximum allowable ‘a’ vals
+    intermediate_a *= max_abs_val
+
+    # is low enough
+    intermediate_b = np.less_equal(a, intermediate_a, out=intermediate_b)
+
+    # denominator is non-zero
+    out = np.not_equal(intermediate_a, 0, out=out)
+
+    # is safe
+    out &= intermediate_b
+
+    return out
+
+
+def _get_is_safe_to_divide__cc(
+    a,  # complex64
+    b,  # complex64
+    *,
+    max_abs_val,
+    intermediate_a,  # float32
+    intermediate_b,  # float32
+    intermediate_c,  # bool
+    out  # bool
+):
+    # abs(a) vals
+    intermediate_a = np.abs(a, out=intermediate_a)
+
+    # abs(b) vals
+    intermediate_b = np.abs(b, out=intermediate_b)
+
+    # maximum allowable abs(a) vals
+    intermediate_b *= max_abs_val
+
+    # is low enough
+    intermediate_c = np.less_equal(
+        intermediate_a, intermediate_b, out=intermediate_c
+    )
+
+    # denominator is non-zero
+    out = np.not_equal(intermediate_b, 0, out=out)
+
     out &= intermediate_c
 
     return out
@@ -86,17 +145,81 @@ def _interpolate_missing(x, *, is_present):
 
 
 def safe_divide__cf(
-    a, # complex64
-    b, # float32
+    a,  # complex64
+    b,  # float32
     *,
     max_abs_val,
-    intermediate_a=None, # float32
-    intermediate_b=None, # float32
-    intermediate_c=None, # bool
-    intermediate_d=None, # bool
-    out=None # complex64
+    intermediate_a=None,  # float32
+    intermediate_b=None,  # float32
+    intermediate_c=None,  # bool
+    intermediate_d=None,  # bool
+    out=None  # complex64
 ):
     intermediate_d = _get_is_safe_to_divide__cf(
+        a, b,
+        max_abs_val=max_abs_val,
+        intermediate_a=intermediate_a,
+        intermediate_b=intermediate_b,
+        intermediate_c=intermediate_c,
+        out=intermediate_d
+    )
+
+    if np.any(intermediate_d):
+        out = np.divide(a, b, out=out)
+
+        if not np.all(intermediate_d):
+            _interpolate_missing(out, is_present=intermediate_d)
+    elif out is None:
+        out = np.zeros(a.shape, dtype=np.complex64)
+    else:
+        out.fill(0)
+
+    return out
+
+
+def safe_divide__fc(
+    a,  # float32
+    b,  # complex64
+    *,
+    max_abs_val,
+    intermediate_a=None,  # float32
+    intermediate_b=None,  # bool
+    intermediate_c=None,  # bool
+    out=None  # complex64
+):
+    intermediate_c = _get_is_safe_to_divide__fc(
+        a, b,
+        max_abs_val=max_abs_val,
+        intermediate_a=intermediate_a,
+        intermediate_b=intermediate_b,
+        out=intermediate_c
+    )
+
+    if np.any(intermediate_c):
+        out = np.divide(a, b, out=out)
+
+        if not np.all(intermediate_c):
+            _interpolate_missing(out, is_present=intermediate_c)
+    elif out is None:
+        out = np.zeros(a.shape, dtype=np.complex64)
+    else:
+        out.fill(0)
+
+    return out
+
+
+def safe_divide__cc(
+    a,  # complex64
+    b,  # complex64
+    *,
+    max_abs_val,
+    intermediate_a,  # float32
+    intermediate_b,  # float32
+    intermediate_c,  # bool
+    intermediate_d,  # bool
+    out=None  # complex64
+):
+    out = _get_is_safe_to_divide__cc(
         a, b,
         max_abs_val=max_abs_val,
         intermediate_a=intermediate_a,

@@ -1,241 +1,104 @@
-from pathlib import Path
-from fractions import Fraction
-import numpy as np
-
-from .to7m_exec import func_from_str
+# Black majicks happen here.
 
 
-def _logger_ignore(**_):
-    return _logger_ignore
+##############################################################################
 
 
-def _logger_print(**kwargs):
-    print(kwargs)
+def _make_sanitise_int(allow_convert=False, limit=None):
+    def sanitise_int(x, name):
+        if allow_convert:
+            x = int(x)
+        elif type(x) is not int:
+            raise TypeError(f"{name} should be an int")
 
-    return _logger_print
+        if limit == ">=0":
+            if x < 0:
+                raise ValueError(f"{name} should not be less than zero")
 
+        return x
 
-_sanitisers = {}
-
-
-def _get_add_sanitiser_for_name(name):
-    def add_sanitiser(sanitiser_function):
-        _sanitisers[name] = sanitiser_function
-
-        return sanitiser_function
-
-    return add_sanitiser
+    return sanitise_int
 
 
-def _make_sanitise_int(name, *, min_=None):
-    if min_ is None:
-        min_action = ""
+sanitise_num_of_before_iterations = _make_sanitise_int(">=0")
+
+
+##############################################################################
+
+
+import inspect
+
+
+
+class _Sanitiser:
+    def __init__(self, name, callable_):
+        self.name = name
+        self.callable_ = callable_
+
+    def __call__(self, x):
+        return self.callable_(x, self.name)
+
+
+def _get_sanitisers():
+    for attr_name, val in globals().items():
+        if not attr_name.startswith("sanitise_"):
+            continue
+
+        name = attr_name[9:]
+
+        if not callable(val):
+            raise RuntimeError(f"sanitiser for {name} is not callable")
+
+        sanitiser = _Sanitiser(name, val)
+
+        globals()[attr_name] = sanitiser
+        yield name, sanitiser
+
+
+_sanitisers = dict(_get_sanitisers())
+
+
+def _sanitise_arg_given_caller_locals(arg, caller_locals):
+    if type(arg) is not str:
+        raise TypeError("arg should be a str")
+
+    if arg not in caller_locals:
+        raise KeyError(f"variable {arg!r} not found in locals")
     else:
-        min_action = f"""
-            if {name} < {min_}:
-                raise ValueError("{name} should be at least {min_}")
-        """
+        val = caller_locals[arg]
 
-    sanitise_int_ge_1 = func_from_str(
-        f"""
-        def sanitise_{name}({name}):
-            {name} = int({name})
-            {min_action}
-            return {name}
-        """
-    )
-
-    decorator = _get_add_sanitiser_for_name(name)
-
-    return decorator(sanitise_int_ge_1)
-
-
-def _make_sanitise_mono_audio(audio_type):
-    sanitise_mono_audio = func_from_str(
-        f"""
-        def sanitise_{audio_type}_audio({audio_type}_audio):
-            if type({audio_type}_audio) is not np.ndarray:
-                raise TypeError(
-                    "{audio_type}_audio should be a numpy.ndarray"
-                )
-
-            if len({audio_type}_audio.shape) != 1:
-                raise ValueError(
-                    "{audio_type}_audio should be 1-D and therefore contain "
-                    "1 channel"
-                )
-
-            return {audio_type}_audio
-        """,
-        globals_={"np": np}
-    )
-
-    decorator = _get_add_sanitiser_for_name(f"{audio_type}_audio")
-
-    return decorator(sanitise_mono_audio)
-
-
-def _make_sanitise_timestamp(name, *, allow_none=False, range_="any"):
-    if allow_none:
-        none_action = "return None"
+    if arg in _sanitisers:
+        return _sanitisers[arg](val)
     else:
-        none_action = f"raise TypeError('{name} must not be None')"
-
-    if range_ == "any":
-        range_action = ""
-    elif range_ == ">=0":
-        range_action = (
-            f"""
-            if ts < 0:
-                raise ValueError("{name} should not be less than 0")
-            """
-        )
-    elif range_ == ">0":
-        range_action = (
-            f"""
-            if ts <= 0:
-                raise ValueError("{name} should be greater than 0")
-            """
-        )
-
-    sanitise_timestamp = func_from_str(
-        f"""
-        def sanitise_{name}({name}):
-            if {name} is None:
-                {none_action}
-
-            if type({name}) is str:
-                ts = Fraction(0)
-                for unit_str in {name}.split(':'):
-                    ts *= 60
-                    ts += Fraction(unit_str)
-            else:
-                ts = Fraction({name})
-            {range_action}
-            return ts
-        """,
-        globals_={"Fraction": Fraction}
-    )
-
-    decorator = _get_add_sanitiser_for_name(name)
-
-    return decorator(sanitise_timestamp)
+        raise KeyError(f"no sanitiser found for variable {arg!r}")
 
 
-sanitise_additional_iterations_before \
-    = _make_sanitise_int("additional_iterations_before", min_=0)
-sanitise_additional_iterations_after \
-    = _make_sanitise_int("additional_iterations_after", min_=0)
+def sanitise_arg(arg):
+    caller_locals = inspect.currentframe().f_back.f_locals
 
-sanitise_num_of_retained = _make_sanitise_int("num_of_retained", min_=1)
-sanitise_stem_num_of_retained \
-    = _make_sanitise_int("stem_num_of_retained", min_=1)
-sanitise_mix_num_of_retained \
-    = _make_sanitise_int("mix_num_of_retained", min_=1)
-
-sanitise_mono_audio = _make_sanitise_mono_audio("mono")
-sanitise_intermediate_audio = _make_sanitise_mono_audio("intermediate")
-sanitise_mix_audio = _make_sanitise_mono_audio("mix")
-sanitise_stem_audio = _make_sanitise_mono_audio("stem")
-
-sanitise_start_val = _make_sanitise_timestamp("start_val")
-sanitise_start_add = _make_sanitise_timestamp("start_add")
-sanitise_min_diff = _make_sanitise_timestamp("min_diff", range_=">0")
-sanitise_min_diff_s = _make_sanitise_timestamp("min_diff_s", range_=">0")
-
-sanitise_lookahead_s = _make_sanitise_timestamp("lookahead_s", range_=">=0")
-sanitise_lookbehind_s = _make_sanitise_timestamp("lookbehind_s", range_=">=0")
-
-sanitise_delay_audio_s = _make_sanitise_timestamp("delay_audio_s")
-sanitise_delay_stem_s = _make_sanitise_timestamp("delay_stem_s")
-sanitise_delay_intermediate_s \
-    = _make_sanitise_timestamp("delay_intermediate_s")
-sanitise_delay_stem_s_start_val \
-    = _make_sanitise_timestamp("delay_stem_s_start_val")
-sanitise_delay_stem_s_start_add \
-    = _make_sanitise_timestamp("delay_stem_s_start_add")
-sanitise_start_s = _make_sanitise_timestamp("start_s")
-sanitise_stop_s = _make_sanitise_timestamp("stop_s", allow_none=True)
+    return _sanitise_arg_given_caller_locals(arg, caller_locals)
 
 
-_get_add_sanitiser_for_name("aim_lowest")(bool)
+def sanitise_args_list(args_list):
+    if type(args_list) is not list:
+        raise TypeError("args_list should be a list of str instances")
+
+    caller_locals = inspect.currentframe().f_back.f_locals
+
+    for i, arg in enumerate(args_list):
+        args_list[i] = _sanitise_arg_given_caller_locals(arg, caller_locals)
+
+    return args_list
 
 
-@_get_add_sanitiser_for_name("logger")
-def sanitise_logger(logger):
-    if callable(logger):
-        return logger
-    elif logger:
-        return _logger_print
-    else:
-        return _logger_ignore
+def sanitise_args_list_to_dict(args_list):
+    if type(args_list) is not list:
+        raise TypeError("args_list should be a list of str instances")
 
+    caller_locals = inspect.currentframe().f_back.f_locals
 
-@_get_add_sanitiser_for_name("max_amplification")
-def sanitise_max_amplification(max_amplification):
-    max_amplification = float(max_amplification)
+    args_dict = {}
+    for arg in args_list:
+        args_dict[arg] = _sanitise_arg_given_caller_locals(arg, caller_locals)
 
-    if max_amplification <= 0:
-        raise ValueError("max_amplification should be greater than 0")
-
-    return max_amplification
-
-
-@_get_add_sanitiser_for_name("path")
-def sanitise_path(path):
-    return Path(path)
-
-
-@_get_add_sanitiser_for_name("sample_rate")
-def sanitise_sample_rate(sample_rate):
-    sample_rate = Fraction(sample_rate)
-
-    if sample_rate <= 0:
-        raise ValueError("sample_rate should be greater than 0")
-
-    return sample_rate
-
-
-@_get_add_sanitiser_for_name("scoring_function")
-def sanitise_scoring_function(scoring_function):
-    if callable(scoring_function):
-        return scoring_function
-    else:
-        raise TypeError("scoring_function should be a callable")
-
-
-@_get_add_sanitiser_for_name("side_winner_mul")
-def sanitise_side_winner_mul(side_winner_mul):
-    side_winner_mul = Fraction(side_winner_mul)
-
-    if side_winner_mul <= 1:
-        raise ValueError("side_winner_mul should be greater than 1")
-
-    return side_winner_mul
-
-
-@_get_add_sanitiser_for_name("transform_len")
-def sanitise_transform_len(transform_len):
-    transform_len = int(transform_len)
-
-    if transform_len < 2:
-        raise ValueError("transform_len should not be less than 2")
-
-    if transform_len % 2 != 0:
-        raise ValueError("transform_len should be divisible by 2")
-
-    return transform_len
-
-
-def sanitise_args(args_dict):
-    if type(args_dict) is not dict:
-        raise TypeError("args_dict should be a dict")
-
-    sanitised_args = {}
-    for key, val in args_dict.items():
-        if key in _sanitisers:
-            sanitised_args[key] = _sanitisers[key](val)
-        else:
-            raise KeyError(f"could not sanitise argument ‘{key}’")
-
-    return sanitised_args
+    return args_dict

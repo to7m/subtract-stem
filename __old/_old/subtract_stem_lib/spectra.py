@@ -186,6 +186,7 @@ class GenerateSpectra:
             "logger": logger
         }))
 
+        self.transform_len = self._constants.transform_len
         self.num_of_iterations = self._constants.num_of_iterations
         self.interval_len = self._constants.interval_len
         self.pre_delay_start_sample = self._constants.pre_delay_start_sample
@@ -234,6 +235,7 @@ class GenerateStemAndMixSpectra:
             logger=wrapped_logger
         )
 
+        self.transform_len = self._mix_spectra.transform_len
         self.num_of_iterations = self._mix_spectra.num_of_iterations
         self.interval_len = self._mix_spectra.interval_len
         self.pre_delay_start_sample = self._mix_spectra.pre_delay_start_sample

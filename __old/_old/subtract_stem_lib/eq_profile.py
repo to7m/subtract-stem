@@ -19,6 +19,7 @@ class _SingleConstants:
         delay_stem_s,
         transform_len,
         max_amplification,
+        ret_reciprocal_eq,
         logger
     ):
         self.stem_and_mix_spectra = GenerateStemAndMixSpectra(
@@ -31,6 +32,7 @@ class _SingleConstants:
 
         self.transform_len = transform_len
         self.max_amplification = max_amplification
+        self.ret_reciprocal_eq = ret_reciprocal_eq
         self.logger = logger
 
         self.num_of_iterations = self.stem_and_mix_spectra.num_of_iterations
@@ -46,6 +48,7 @@ class _RunningConstants:
         transform_len,
         lookbehind_s, lookahead_s,
         max_amplification,
+        ret_reciprocal_eq,
         logger
     ):
         self.retained_len = lookahead_iterations + 1
@@ -64,6 +67,7 @@ class _RunningConstants:
         self.transform_len = transform_len
         self._lookbehind_s, self._lookahead_s = lookbehind_s, lookahead_s
         self.max_amplification = max_amplification
+        self.ret_reciprocal_eq = ret_reciprocal_eq
         self.logger = logger
 
         (
@@ -153,10 +157,16 @@ class _SingleIterator:
         self._log_progress()
 
     def _calculate_eq_profile(self):
-        return safe_divide__cf(
-            self._rotated_mix_spectra_sum, self._abs_stem_spectra_sum,
-            max_abs_val=self._constants.max_amplification
-        )
+        if self._constants.ret_reciprocal_eq:
+            return safe_divide__fc(
+                self._abs_stem_spectra_sum, self._rotated_mix_spectra_sum,
+                max_abs_val=self._constants.max_amplification,
+            )
+        else:
+            return safe_divide__cf(
+                self._rotated_mix_spectra_sum, self._abs_stem_spectra_sum,
+                max_abs_val=self._constants.max_amplification
+            )
 
 
 class _RunningIterator:
@@ -173,6 +183,8 @@ class _RunningIterator:
             = np.empty(constants.transform_len, dtype=np.complex64)
         self._retained_stem_spectra \
             = [None for _ in range(constants.retained_len)]
+        self._retained_mix_spectra \
+            = [None for _ in range(constants.retained_len)]
         self._abs_stem_spectra_cumsum \
             = np.empty(constants.cumsum_shape, dtype=np.float32)
         self._rotated_mix_spectra_cumsum \
@@ -182,7 +194,7 @@ class _RunningIterator:
         self._rotated_mix_spectra_sum \
             = np.empty(constants.transform_len, dtype=np.complex64)
         self._safe_divide_intermediate_arrays \
-            = self._get_safe_divide_intermediate_arrays()
+            = dict(self._get_safe_divide_intermediate_arrays())
         self._eq_profile \
             = np.empty(constants.transform_len, dtype=np.complex64)
 
@@ -200,19 +212,24 @@ class _RunningIterator:
 
         self._common_routine()
         eq_profile = self._calculate_eq_profile()
-        stem_spectrum = self._get_old_stem_spectrum()
+        stem_spectrum, mix_spectrum = self._get_old_spectra()
 
         self._i += 1
         self._log_main_progress()
 
-        return eq_profile, stem_spectrum
+        return eq_profile, stem_spectrum, mix_spectrum
 
     def _get_safe_divide_intermediate_arrays(self):
-        return {
-            f"intermediate_{chr(ord('a') + i)}":
-                np.empty(self._constants.transform_len, dtype=dtype)
-            for i, dtype in enumerate([np.float32, np.float32, bool, bool])
-        }
+        if self._constants.ret_reciprocal_eq:
+            dtypes = np.float32, bool, bool
+        else:
+            dtypes = np.float32, np.float32, bool, bool
+
+        for i, dtype in enumerate(dtypes):
+            arg_name = f"intermediate_{char(ord('a') + i)}"
+            val = np.empty(self._constants.transform_len, dtype=dtype)
+
+            yield arg_name, val
 
     def _log_initialisation_progress(self):
         num_of_iterations = self._constants.num_of_initialisation_iterations
@@ -239,6 +256,7 @@ class _RunningIterator:
 
         retained_i = self._i % self._constants.retained_len
         self._retained_stem_spectra[retained_i] = stem_spectrum
+        self._retained_mix_spectra[retained_i] = mix_spectrum
 
         abs_stem_spectrum, rotated_mix_spectrum = ataabtrnfatbaa(
             stem_spectrum, mix_spectrum,
@@ -291,17 +309,27 @@ class _RunningIterator:
             out=self._rotated_mix_spectra_sum
         )
 
-        return safe_divide__cf(
-            rotated_mix_spectra_sum, abs_stem_spectra_sum,
-            max_abs_val=self._constants.max_amplification,
-            **self._safe_divide_intermediate_arrays,
-            out=self._eq_profile
-        )
+        if self._constants.ret_reciprocal_eq:
+            return safe_divide__fc(
+                abs_stem_spectra_sum, rotated_mix_spectra_sum,
+                max_abs_val=self._constants.max_amplification,
+                **self._safe_divide_intermediate_arrays,
+                out=self._eq_profile
+            )
+        else:
+            return safe_divide__cf(
+                rotated_mix_spectra_sum, abs_stem_spectra_sum,
+                max_abs_val=self._constants.max_amplification,
+                **self._safe_divide_intermediate_arrays,
+                out=self._eq_profile
+            )
 
-    def _get_old_stem_spectrum(self):
-        return self._retained_stem_spectra[
-            (self._i + 1) % self._constants.retained_len
-        ]
+    def _get_old_spectra(self):
+        retained_i = (self._i + 1) % self._constants.retained_len
+        return (
+            self._retained_stem_spectra[retained_i],
+            self._retained_mix_spectra[retained_i]
+        )
 
 
 class GenerateSingleEqProfile:
@@ -312,6 +340,7 @@ class GenerateSingleEqProfile:
         delay_stem_s=Fraction(0),
         transform_len=TRANSFORM_LEN,
         max_amplification=MAX_AMPLIFICATION,
+        ret_reciprocal_eq=False,
         logger=None
     ):
         self._constants = _SingleConstants(
@@ -322,10 +351,12 @@ class GenerateSingleEqProfile:
             transform_len=transform_len,
             **sanitise_args({
                 "max_amplification": max_amplification,
+                "ret_reciprocal_eq": ret_reciprocal_eq,
                 "logger": logger
             })
         )
 
+        self.transform_len = self._constants.transform_len
         self.num_of_iterations = self._constants.num_of_iterations
 
     def __iter__(self):
@@ -347,6 +378,7 @@ class GenerateRunningEqProfile:
         transform_len=TRANSFORM_LEN,
         lookbehind_s=LOOKBEHIND_S, lookahead_s=LOOKAHEAD_S,
         max_amplification=MAX_AMPLIFICATION,
+        ret_reciprocal_eq=False,
         logger=None
     ):
         self._constants = _RunningConstants(
@@ -358,10 +390,12 @@ class GenerateRunningEqProfile:
             **sanitise_args({
                 "lookbehind_s": lookbehind_s, "lookahead_s": lookahead_s,
                 "max_amplification": max_amplification,
+                "ret_reciprocal_eq": ret_reciprocal_eq,
                 "logger": logger
             })
         )
 
+        self.transform_len = self._constants.transform_len
         self.num_of_initialisation_iterations \
             = self._constants.num_of_initialisation_iterations
         self.num_of_main_iterations = self._constants.num_of_main_iterations

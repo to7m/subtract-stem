@@ -1,6 +1,8 @@
 import numpy as np
 
-from .math import safe_divide__cf, safe_reciprocal__c
+from .math import (
+    safe_divide__cf, safe_divide__fc, safe_divide_cc, safe_reciprocal__c
+)
 from .hone_in_simple import hone_in
 from .io import load_mono_audio, save_mono_audio
 from .spectra import GenerateSpectra, GenerateStemAndMixSpectra
