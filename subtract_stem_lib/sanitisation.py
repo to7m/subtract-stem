@@ -20,9 +20,6 @@ def _make_sanitise_int(allow_convert=False, limit=None):
     return sanitise_int
 
 
-sanitise_num_of_before_iterations = _make_sanitise_int(">=0")
-
-
 ##############################################################################
 
 
@@ -58,14 +55,24 @@ def _get_sanitisers():
 _sanitisers = dict(_get_sanitisers())
 
 
-def _sanitise_arg_given_caller_locals(arg, caller_locals):
+def _sanitise_arg_given_val(arg, val):
     if type(arg) is not str:
         raise TypeError("arg should be a str")
 
-    if arg not in caller_locals:
-        raise KeyError(f"variable {arg!r} not found in locals")
+    if arg in _sanitisers:
+        return _sanitisers[arg](val)
     else:
-        val = caller_locals[arg]
+        raise KeyError(f"no sanitiser found for variable {arg!r}")
+
+
+def _sanitise_arg_given_args_dict(arg, args_dict):
+    if type(arg) is not str:
+        raise TypeError("arg should be a str")
+
+    if arg not in args_dict:
+        raise KeyError(f"variable {arg!r} not found")
+    else:
+        val = args_dict[arg]
 
     if arg in _sanitisers:
         return _sanitisers[arg](val)
@@ -76,29 +83,26 @@ def _sanitise_arg_given_caller_locals(arg, caller_locals):
 def sanitise_arg(arg):
     caller_locals = inspect.currentframe().f_back.f_locals
 
-    return _sanitise_arg_given_caller_locals(arg, caller_locals)
+    return _sanitise_arg_given_args_dict(arg, caller_locals)
 
 
-def sanitise_args_list(args_list):
-    if type(args_list) is not list:
-        raise TypeError("args_list should be a list of str instances")
-
+def sanitise_args(*xargs, **kwargs):
     caller_locals = inspect.currentframe().f_back.f_locals
+    for arg in xargs:
+        yield _sanitise_arg_given_args_dict(arg, caller_locals)
 
-    for i, arg in enumerate(args_list):
-        args_list[i] = _sanitise_arg_given_caller_locals(arg, caller_locals)
-
-    return args_list
+    for arg, val in kwargs.items():
+        yield _sanitise_arg_given_val(arg, val)
 
 
-def sanitise_args_list_to_dict(args_list):
-    if type(args_list) is not list:
-        raise TypeError("args_list should be a list of str instances")
-
-    caller_locals = inspect.currentframe().f_back.f_locals
-
+def sanitise_args_to_dict(*xargs, **kwargs):
     args_dict = {}
-    for arg in args_list:
-        args_dict[arg] = _sanitise_arg_given_caller_locals(arg, caller_locals)
+
+    caller_locals = inspect.currentframe().f_back.f_locals
+    for arg in xargs:
+        args_dict[arg] = _sanitise_arg_given_args_dict(arg, caller_locals)
+
+    for arg, val in kwargs.items():
+        args_dict[arg] = _sanitise_arg_given_val(arg, val)
 
     return args_dict
