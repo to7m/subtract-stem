@@ -5,17 +5,17 @@
 
 
 def _make_sanitise_int(allow_convert=False, limit=None):
-    def sanitise_int(x, name):
+    def sanitise_int(val, name):
         if allow_convert:
-            x = int(x)
-        elif type(x) is not int:
+            val = int(val)
+        elif type(val) is not int:
             raise TypeError(f"{name} should be an int")
 
         if limit == ">=0":
-            if x < 0:
+            if val < 0:
                 raise ValueError(f"{name} should not be less than zero")
 
-        return x
+        return val
 
     return sanitise_int
 
@@ -26,14 +26,21 @@ def _make_sanitise_int(allow_convert=False, limit=None):
 import inspect
 
 
+_UNIQUE_NONE = object()
+
 
 class _Sanitiser:
-    def __init__(self, name, callable_):
-        self.name = name
+    def __init__(self, callable_, name):
         self.callable_ = callable_
+        self.name = name
 
-    def __call__(self, x):
-        return self.callable_(x, self.name)
+    def __call__(self, val, name=None):
+        if name is None:
+            return self.callable_(val, self.name)
+        elif type(name) is str:
+            return self.callable_(val, name)
+        else:
+            raise TypeError("if provided, name should be a str")
 
 
 def _get_sanitisers():
@@ -46,7 +53,7 @@ def _get_sanitisers():
         if not callable(val):
             raise RuntimeError(f"sanitiser for {name} is not callable")
 
-        sanitiser = _Sanitiser(name, val)
+        sanitiser = _Sanitiser(val, name)
 
         globals()[attr_name] = sanitiser
         yield name, sanitiser
@@ -55,54 +62,53 @@ def _get_sanitisers():
 _sanitisers = dict(_get_sanitisers())
 
 
-def _sanitise_arg_given_val(arg, val):
-    if type(arg) is not str:
-        raise TypeError("arg should be a str")
+def sanitise_arg(
+    name, val=_UNIQUE_NONE, *,
+    args_dict=None, sanitiser_name=None,
+    additional_frames=0
+):
+    if type(name) is not str:
+        raise TypeError("name should be a str")
 
-    if arg in _sanitisers:
-        return _sanitisers[arg](val)
-    else:
-        raise KeyError(f"no sanitiser found for variable {arg!r}")
+    if args_dict is not None and type(args_dict) is not dict:
+            raise TypeError("if provided, args_dict should be a dict")
 
+    if sanitiser_name is None:
+        sanitiser_name = name
+    elif type(sanitiser_name) is not str:
+        raise TypeError("if provided, sanitiser_name should be a str")
 
-def _sanitise_arg_given_args_dict(arg, args_dict):
-    if type(arg) is not str:
-        raise TypeError("arg should be a str")
+    if type(additional_frames) is not int:
+        raise TypeError("if provided, additional_frames should be an int")
 
-    if arg not in args_dict:
-        raise KeyError(f"variable {arg!r} not found")
-    else:
-        val = args_dict[arg]
+    if val is _UNIQUE_NONE:
+        if args_dict is None:
+            val = inspect.stack()[1 + additional_frames].f_locals[name]
+        else:
+            val = args_dict[name]
 
-    if arg in _sanitisers:
-        return _sanitisers[arg](val)
-    else:
-        raise KeyError(f"no sanitiser found for variable {arg!r}")
-
-
-def sanitise_arg(arg):
-    caller_locals = inspect.currentframe().f_back.f_locals
-
-    return _sanitise_arg_given_args_dict(arg, caller_locals)
+    return _sanitisers[sanitiser_name](val, name)
 
 
 def sanitise_args(*xargs, **kwargs):
-    caller_locals = inspect.currentframe().f_back.f_locals
-    for arg in xargs:
-        yield _sanitise_arg_given_args_dict(arg, caller_locals)
+    vals = []
 
-    for arg, val in kwargs.items():
-        yield _sanitise_arg_given_val(arg, val)
+    for name in xargs:
+        vals.append(sanitise_arg(name, additional_frames=1))
+
+    for name, val in kwargs.items():
+        vals.append(sanitise_arg(name, val))
+
+    return vals
 
 
 def sanitise_args_to_dict(*xargs, **kwargs):
     args_dict = {}
 
-    caller_locals = inspect.currentframe().f_back.f_locals
-    for arg in xargs:
-        args_dict[arg] = _sanitise_arg_given_args_dict(arg, caller_locals)
+    for name in xargs:
+        args_dict[name] = sanitise_arg(name, additional_frames=1)
 
-    for arg, val in kwargs.items():
-        args_dict[arg] = _sanitise_arg_given_val(arg, val)
+    for name, val in kwargs.items():
+        args_dict[name] = sanitise_arg(name, val)
 
     return args_dict
