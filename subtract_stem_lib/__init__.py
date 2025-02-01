@@ -1,5 +1,18 @@
 import numpy as np
 
+
+from .divide import (
+    UnsafeDivider, GenerateIsSafes, InterpolateMissing, SafeDivider,
+    safe_divide
+)
+
+
+# There's no thread-safe way of doing this so I'm just putting it here to make
+# it obvious.
+np.seterr(divide="ignore", invalid="ignore")
+
+
+""" old:
 from .math import (
     safe_divide__cf, safe_divide__fc, safe_divide_cc, safe_reciprocal__c
 )
@@ -20,8 +33,4 @@ from .subtract_from_mix import (
     subtract_single_intermediate_from_mix,
     subtract_running_intermediate_from_mix
 )
-
-
-# There's no thread-safe way of doing this so I'm just putting it here to make
-# it obvious.
-np.seterr(divide="ignore")
+"""

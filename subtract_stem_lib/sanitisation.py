@@ -9,11 +9,11 @@ def _make_sanitise_int(allow_convert=False, limit=None):
         if allow_convert:
             val = int(val)
         elif type(val) is not int:
-            raise TypeError(f"{name} should be an int")
+            raise TypeError(f"{name!r} should be an int")
 
         if limit == ">=0":
             if val < 0:
-                raise ValueError(f"{name} should not be less than zero")
+                raise ValueError(f"{name!r} should not be less than zero")
 
         return val
 
