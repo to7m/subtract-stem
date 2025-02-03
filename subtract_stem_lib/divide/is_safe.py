@@ -38,7 +38,7 @@ class GenerateIsSafes:
 
                 if arr.shape != self.a.shape:
                     raise ValueError(
-                        f"{name!r} should have same shape as 'a'"
+                        f"if provided, {name!r} should have same shape as 'a'"
                     )
 
             yield arr

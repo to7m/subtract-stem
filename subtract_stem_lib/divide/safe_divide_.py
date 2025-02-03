@@ -48,6 +48,7 @@ class SafeDivider:
                 next(unsafe_divider_iter)
                 next(generate_is_safes_iter)
                 next(interpolate_missing_iter)
+
                 yield
 
         return iterator
@@ -72,8 +73,13 @@ class SafeDivider:
             yield arr
 
 
-def safe_divide(a, b, *, max_abs_result, intermediate=None, out=None):
-    safe_divider = SafeDivider.from_args(
+def safe_divide(
+    a, b, *,
+    max_abs_result,
+    intermediate_a=None, intermediate_b=None,
+    out=None
+):
+    safe_divider = SafeDivider(
         a, b,
         max_abs_result=max_abs_result,
         intermediate=intermediate,
