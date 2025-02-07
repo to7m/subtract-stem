@@ -1,10 +1,14 @@
 from math import tau
 import numpy as np
 
+from ..defaults import GRAIN_LEN
 from ._sanitise_grain_len_interval_len import sanitise_grain_len_interval_len
 
 
-def get_window(grain_len, *, interval_len=None, delay_audio_samples=0.0):
+def get_window(
+    grain_len=GRAIN_LEN, *,
+    interval_len=None, delay_audio_samples=0.0
+):
     _, interval_len = sanitise_grain_len_interval_len(grain_len, interval_len)
     delay_audio_samples = sanitise_arg("delay_audio_samples")
 
@@ -46,20 +50,24 @@ class AudioToGrains:
             "start_i", "interval_len", "num_of_iterations",
             "window"
         )
-
-        if out is None:
-            self.out = np.empty(window.shape, dtype=np.float32)
-        else:
-            self.out = sanitise_arg("out", sanitiser_name="array_1d_float")
-
-            if out.shape != window.shape:
-                raise ValueError("'out' should have same shape as 'window'")
+        self.out = self._sanitise_out(out)
 
         self._start_grain_stop_i = start_i + len(window)
         self._grain_ranges = dict(self._get_grain_ranges())
 
     def __iter__(self):
         return chain(*self._get_subiterators())
+
+    def _sanitise_out(self, out):
+        if out is None:
+            out = np.empty(self.window.shape, dtype=np.float32)
+        else:
+            out = sanitise_arg("out", sanitiser_name="array_1d_float")
+
+            if out.shape != self.window.shape:
+                raise ValueError("'out' should have same shape as 'window'")
+
+        return out
 
     def _get_grain_num(self, *, start_i=None, stop_i=None):
         if stop_i is None:
@@ -268,66 +276,61 @@ class AudioToGrains:
             yield bound_method(grain_range)
 
 
-
 class AudioToHannGrains:
     __slots__ = [
         "audio",
         "start_i", "interval_len", "num_of_iterations",
-        "window", "out",
-        "_start_grain_stop_i", "_grain_ranges"
+        "grain_len", "delay_audio_samples",
+        "out",
+        "_audio_to_grains"
     ]
 
     def __init__(
         self, audio, *,
         start_i, interval_len, num_of_iterations,
-        grain_len, delay_audio_samples,
-        out
+        grain_len=GRAIN_LEN, delay_audio_samples=0.0,
+        out=None
     ):
-        _, interval_len \
+        self.start_i = sanitise_arg("start_i")
+        self.grain_len, self.interval_len \
             = sanitise_grain_len_interval_len(grain_len, interval_len)
-
-        
+        self.delay_audio_samples = sanitise_arg("delay_audio_samples")
+        self.out = self._sanitise_out(out)
 
         self._audio_to_grains = AudioToGrains(
             audio,
-            start_i=start_i,
+            start_i=start_i - int(self.delay_audio_samples),
             interval_len=interval_len,
             num_of_iterations=num_of_iterations,
-            window=window,
+            window=self._get_window(),
             out=out
         )
 
-        (
-            self.audio,
-            self.start_i, self.interval_len, self.num_of_iterations,
-            self.grain_len, self.delay_audio_samples,
-            self.out
-        ) = (
-            audio,
-            start_i, interval_len, num_of_iterations,
-            grain_len, delay_audio_samples,
-            out
-        )
+        self.audio = audio
+        self.interval_len = interval_len
+        self.num_of_iterations = num_of_iterations
 
+    def __iter__(self):
+        return iter(self._audio_to_grains)
 
+    def _sanitise_out(self, out):
+        if out is None:
+            out = np.empty(self.grain_len, dtype=np.float32)
+        else:
+            out = sanitise_arg("out", sanitiser_name="array_1d_float")
 
+            if len(out) != self.grain_len:
+                raise ValueError(
+                    "'out' should be the same size as 'grain_len'"
+                )
 
-self, audio, *,
-        start_i, interval_len, num_of_iterations,
-        window,
-        out=None
-        )
-
-
-
-
-
-        self.grain_len = sanitise_arg("grain_len")
-        self.delay_audio_samples = sanitise_arg("delay_audio_samples")
-        self.window = self._get_window()
+        return out
 
     def _get_window(self):
-        delay_audio_samples_whole, delay_audio_samples_remainder \
-            = divmod(self.delay_audio_samples, 1)
+        delay_audio_samples_remainder = self.delay_audio_samples % 1
 
-        return get_window(self.grain_len, delay_audio_samples)
+        window = get_window(
+            self.grain_len,
+            interval_len=self.interval_len,
+            delay_audio_samples=delay_audio_samples_remainder
+        )

@@ -6,20 +6,46 @@ class InterpolateMissing:
 
     def __init__(self, a, *, is_safe, out=None):
         self.a = sanitise_arg("a", sanitiser_name="array_1d_complex")
-        self.is_safe = sanitise_arg("is_safe")
+        self.is_safe = self._sanitise_is_safe(is_safe)
+        self.out = self._sanitise_out(out)
 
-        if a.shape != is_safe.shape:
-            raise ValueError("'a' and 'out' should have the same shape")
+    def __iter__(self):
+        a, out, routine = self.a, self.out, self._routine
 
-        if out is None:
-            self.out = np.empty(a.shape, dtype=np.complex64)
+        if out is a:
+            def iterator():
+                while True:
+                    routine()
+                    yield
         else:
-            self.out = sanitise_arg("out", sanitiser_name="array_1d_complex")
+            def iterator():
+                while True:
+                    out[:] = a
+                    routine()
+                    yield
 
-            if out.shape != a.shape:
+        return iterator()
+
+    def _sanitise_is_safe(self, is_safe):
+        sanitise_arg("is_safe")
+
+        if is_safe.shape != self.a.shape:
+            raise ValueError("'a' and 'is_safe' should have the same shape")
+
+        return is_safe
+
+    def _sanitise_out(self, out):
+        if out is None:
+            out = np.empty(self.a.shape, dtype=np.complex64)
+        else:
+            out = sanitise_arg("out", sanitiser_name="array_1d_complex")
+
+            if out.shape != self.a.shape:
                 raise ValueError(
                     "'out' should have the same shape as 'a' and 'is_safe'"
                 )
+
+        return out
 
     def _interpolate_segment(
         self, *, last_present_before, first_present_after
@@ -64,20 +90,3 @@ class InterpolateMissing:
 
         if first_missing is not None:
             out[first_missing:] = out[first_missing - 1]
-
-    def __iter__(self):
-        a, out, routine = self.a, self.out, self._routine
-
-        if out is a:
-            def iterator():
-                while True:
-                    routine()
-                    yield
-        else:
-            def iterator():
-                while True:
-                    out[:] = a
-                    routine()
-                    yield
-
-        return iterator()

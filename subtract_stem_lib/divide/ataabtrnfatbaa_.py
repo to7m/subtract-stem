@@ -26,40 +26,7 @@ class Ataabtrnfatbaa:
             raise ValueError("'a' and 'b' should have the same shape")
 
         self.out_a, self.out_b = self._sanitise_outs(out_a, out_b)
-
-        if intermediate is None:
-            if out_b is b:
-                self.intermediate = np.empty(a.shape, dtype=np.complex64)
-            else:
-                self.intermediate = out_b
-        else:
-            self.intermediate = sanitise_arg(
-                "intermediate", sanitiser_name="array_1d_complex"
-            )
-
-            if intermediate.shape != a.shape:
-                raise ValueError(
-                    "if provided, 'intermediate' should have the same shape "
-                    "as 'a' and 'b'"
-                )
-
-    def _sanitise_outs(self, out_a, out_b):
-        for arr, dtype, name, sanitiser_name in (
-            (out_a, np.float32, "out_a", "array_1d_float"),
-            (out_b, np.complex64, "out_b", "array_1d_complex")
-        ):
-            if arr is None:
-                arr = np.empty(self.a.shape, dtype=dtype)
-            else:
-                sanitise_arg(name, sanitiser_name=sanitiser_name)
-
-                if arr.shape != self.a.shape:
-                    raise ValueError(
-                        f"if provided, {name!r} should have the same shape as "
-                        "'a' and 'b'"
-                    )
-
-            yield arr
+        self.intermediate = self._sanitise_intermediate(intermediate)
 
     def __iter__(self):
         angle, power, multiply = np.angle, np.power, np.multiply
@@ -81,12 +48,49 @@ class Ataabtrnfatbaa:
 
         return iterator()
 
+    def _sanitise_outs(self, out_a, out_b):
+        for arr, dtype, name, sanitiser_name in (
+            (out_a, np.float32, "out_a", "array_1d_float"),
+            (out_b, np.complex64, "out_b", "array_1d_complex")
+        ):
+            if arr is None:
+                arr = np.empty(self.a.shape, dtype=dtype)
+            else:
+                sanitise_arg(name, sanitiser_name=sanitiser_name)
+
+                if arr.shape != self.a.shape:
+                    raise ValueError(
+                        f"if provided, {name!r} should have the same shape as "
+                        "'a' and 'b'"
+                    )
+
+            yield arr
+
+    def _sanitise_intermediate(self, intermediate):
+        if intermediate is None:
+            if self.out_b is self.b:
+                intermediate = np.empty(self.a.shape, dtype=np.complex64)
+            else:
+                intermediate = self.out_b
+        else:
+            intermediate = sanitise_arg(
+                "intermediate", sanitiser_name="array_1d_complex"
+            )
+
+            if intermediate.shape != self.a.shape:
+                raise ValueError(
+                    "if provided, 'intermediate' should have the same shape "
+                    "as 'a' and 'b'"
+                )
+
+        return intermediate
+
 
 def ataabtrnfatbaa(a, b, *, intermediate=None, out_a=None, out_b=None):
-    ataabtrnfatbaa_ = Ataabtrnfatbaa(
+    rotator = Ataabtrnfatbaa(
         a, b, intermediate=intermediate, out_a=out_a, out_b=out_b
     )
 
-    next(iter(ataabtrnfatbaa_))
+    next(iter(rotator))
 
-    return ataabtrnfatbaa_.out_a, ataabtrnfatbaa_.out_b
+    return rotator.out_a, rotator.out_b

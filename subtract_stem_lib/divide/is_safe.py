@@ -12,7 +12,6 @@ class GenerateIsSafes:
     ):
         self.a = sanitise_arg("a", sanitiser_name="array_1d_float_complex")
         self.max_abs_result = sanitise_arg("max_abs_result")
-
         self.intermediate, self.out \
             = self._sanitise_intermediate_and_out(intermediate, out)
 
