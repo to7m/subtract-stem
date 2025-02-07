@@ -1,9 +1,12 @@
+from ..defaults import MAX_ABS_RESULT
+
+
 class GenerateIsSafes:
     __slots__ = ["a", "max_abs_result", "intermediate", "out"]
 
     def __init__(
         self, a, *,
-        max_abs_result,
+        max_abs_result=MAX_ABS_RESULT,
         intermediate=None,  # numpy.float32
         out=None
     ):

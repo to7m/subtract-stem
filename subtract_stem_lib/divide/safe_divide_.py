@@ -1,3 +1,4 @@
+from ..defaults import MAX_ABS_RESULT
 from .unsafe_divide import UnsafeDivider
 from .is_safe import GenerateIsSafes
 from .interpolate_missing import InterpolateMissing
@@ -11,7 +12,7 @@ class SafeDivider:
 
     def __init__(
         self, a, b, *,
-        max_abs_result,
+        max_abs_result=MAX_ABS_RESULT,
         intermediate_a=None,  # numpy.float32
         intermediate_b=None,  # bool
         out=None
@@ -75,7 +76,7 @@ class SafeDivider:
 
 def safe_divide(
     a, b, *,
-    max_abs_result,
+    max_abs_result=MAX_ABS_RESULT,
     intermediate_a=None, intermediate_b=None,
     out=None
 ):

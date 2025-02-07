@@ -1,24 +1,26 @@
 from math import tau
 import numpy as np
 
+from ._sanitise_grain_len_interval_len import sanitise_grain_len_interval_len
+
 
 def get_window(grain_len, *, interval_len=None, delay_audio_samples=0.0):
-    sanitise_arg("grain_len")
-
-    if interval_len is None:
-        interval_len, remainder = grain_len % 
-        if grain_len % 2 == 0:
-            interval_len = grain_len 
-
+    _, interval_len = sanitise_grain_len_interval_len(grain_len, interval_len)
     delay_audio_samples = sanitise_arg("delay_audio_samples")
 
-    phase = (
-        (np.arange(grain_len, dtype=np.float32) + delay_audio_samples)
-        * (tau / grain_len)
-    )
+    overlap = grain_len // interval_len
 
-    return (1 - np.cos(phase)) / 2
+    # phase
+    arr = np.arange(grain_len, dtype=np.float32)
+    arr += delay_audio_samples
+    arr *= tau / grain_len
 
+    # window
+    np.cos(arr, out=arr)
+    np.subtract(1, arr, out=arr)
+    arr *= (1 / overlap)
+
+    return arr
 
 
 class AudioToGrains:
@@ -281,8 +283,39 @@ class AudioToHannGrains:
         grain_len, delay_audio_samples,
         out
     ):
-        self._audio_to_grains = AudioToGrains(
+        _, interval_len \
+            = sanitise_grain_len_interval_len(grain_len, interval_len)
 
+        
+
+        self._audio_to_grains = AudioToGrains(
+            audio,
+            start_i=start_i,
+            interval_len=interval_len,
+            num_of_iterations=num_of_iterations,
+            window=window,
+            out=out
+        )
+
+        (
+            self.audio,
+            self.start_i, self.interval_len, self.num_of_iterations,
+            self.grain_len, self.delay_audio_samples,
+            self.out
+        ) = (
+            audio,
+            start_i, interval_len, num_of_iterations,
+            grain_len, delay_audio_samples,
+            out
+        )
+
+
+
+
+self, audio, *,
+        start_i, interval_len, num_of_iterations,
+        window,
+        out=None
         )
 
 
