@@ -2,14 +2,17 @@ from math import tau
 import numpy as np
 
 from ..defaults import GRAIN_LEN
-from ._sanitise_grain_len_interval_len import sanitise_grain_len_interval_len
+from ._sanitise_hann_grain_len_interval_len import (
+    sanitise_hann_grain_len_interval_len
+)
 
 
-def get_window(
+def get_hann_window(
     grain_len=GRAIN_LEN, *,
     interval_len=None, delay_audio_samples=0.0
 ):
-    _, interval_len = sanitise_grain_len_interval_len(grain_len, interval_len)
+    _, interval_len \
+        = sanitise_hann_grain_len_interval_len(grain_len, interval_len)
     delay_audio_samples = sanitise_arg("delay_audio_samples")
 
     overlap = grain_len // interval_len
@@ -293,7 +296,7 @@ class AudioToHannGrains:
     ):
         self.start_i = sanitise_arg("start_i")
         self.grain_len, self.interval_len \
-            = sanitise_grain_len_interval_len(grain_len, interval_len)
+            = sanitise_hann_grain_len_interval_len(grain_len, interval_len)
         self.delay_audio_samples = sanitise_arg("delay_audio_samples")
         self.out = self._sanitise_out(out)
 
@@ -329,8 +332,11 @@ class AudioToHannGrains:
     def _get_window(self):
         delay_audio_samples_remainder = self.delay_audio_samples % 1
 
-        window = get_window(
+        window = get_hann_window(
             self.grain_len,
             interval_len=self.interval_len,
             delay_audio_samples=delay_audio_samples_remainder
         )
+
+class AddGrainsToAudio:
+    +...
