@@ -20,7 +20,13 @@ class GenerateIsSafes:
         a, max_abs_result, intermediate, out \
             = self.a, self.max_abs_result, self.intermediate, self.out
 
-        def iterator():
+        def iterator(
+            abs_=np.abs, less_equal=np.less_equal,
+            a=self.a,
+            max_abs_result=self.max_abs_result,
+            intermediate=self.intermediate,
+            out=self.out
+        ):
             while True:
                 abs_(a, out=intermediate)
                 less_equal(intermediate, max_abs_result, out=out)

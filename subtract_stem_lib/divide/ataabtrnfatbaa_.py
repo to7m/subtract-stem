@@ -29,14 +29,14 @@ class Ataabtrnfatbaa:
         self.intermediate = self._sanitise_intermediate(intermediate)
 
     def __iter__(self):
-        angle, power, multiply = np.angle, np.power, np.multiply
-        abs_ = np.abs
-
-        a, b = self.a, self.b
-        intermediate = self.intermediate
-        out_a, out_b = self.out_a, self.out_b
-
-        def iterator():
+        def iterator(
+            ONE_ROTATED_CONJUGATED=ONE_ROTATED_CONJUGATED,
+            angle=np.angle, power=np.power, multiply=np.multiply,
+            abs_=np.abs,
+            a=self.a, b=self.b,
+            intermediate=self.intermediate,
+            out_a=self.out_a, out_b=self.out_b
+        ):
             while True:
                 angle(a, out=out_a)
                 power(ONE_ROTATED_CONJUGATED, out_a, out=intermediate)

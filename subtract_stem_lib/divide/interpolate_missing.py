@@ -10,18 +10,28 @@ class InterpolateMissing:
         self.out = self._sanitise_out(out)
 
     def __iter__(self):
-        a, out, routine = self.a, self.out, self._routine
-
-        if out is a:
-            def iterator():
+        if self.out is self.a:
+            def iterator(
+                get_all_is_safe=self.is_safe.all,
+                routine=self._routine
+            ):
                 while True:
-                    routine()
+                    if not get_all_is_safe():
+                        routine()
+
                     yield
         else:
-            def iterator():
+            def iterator(
+                a=self.a, out=self.out,
+                get_all_is_safe=self.is_safe.all,
+                routine=self._routine
+            ):
                 while True:
                     out[:] = a
-                    routine()
+
+                    if not get_all_is_safe():
+                        routine()
+
                     yield
 
         return iterator()
@@ -62,8 +72,14 @@ class InterpolateMissing:
             out[last_present_before + i] = start_val + i * gradient
 
     def _routine(self):
-        is_present_iter = enumerate(self.is_safe)
         out = self.out
+
+        if not self.is_safe.any():
+            out.fill(0)
+
+            return
+
+        is_present_iter = enumerate(self.is_safe)
 
         if not next(is_present_iter)[1]:
             for i, pres in is_present_iter:

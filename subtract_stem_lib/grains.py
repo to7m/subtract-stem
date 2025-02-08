@@ -17,12 +17,12 @@ def get_hann_window(
 
     overlap = grain_len // interval_len
 
-    # phase
+    # arr = phase
     arr = np.arange(grain_len, dtype=np.float32)
     arr += delay_audio_samples
     arr *= tau / grain_len
 
-    # window
+    # arr = window
     np.cos(arr, out=arr)
     np.subtract(1, arr, out=arr)
     arr *= (1 / overlap)
@@ -30,73 +30,29 @@ def get_hann_window(
     return arr
 
 
-class AudioToGrains:
-    __slots__ = [
-        "audio",
-        "start_i", "interval_len", "num_of_iterations",
-        "window", "out",
-        "_start_grain_stop_i", "_grain_ranges"
-    ]
-
+class _GrainRanges:
     def __init__(
-        self, audio, *,
+        self, *,
         start_i, interval_len, num_of_iterations,
-        window,
-        out=None
+        audio_len, grain_len
     ):
-        (
-            self.audio,
-            self.start_i, self.interval_len, self.num_of_iterations,
-            self.window
-        ) = sanitise_args(
-            "audio",
-            "start_i", "interval_len", "num_of_iterations",
-            "window"
-        )
-        self.out = self._sanitise_out(out)
+        self.start_i = start_i
+        self.interval_len = interval_len
+        self.num_of_iterations = num_of_iterations
+        self.audio_len, self.grain_len = audio_len, grain_len
 
-        self._start_grain_stop_i = start_i + len(window)
-        self._grain_ranges = dict(self._get_grain_ranges())
+        self._start_grain_stop_i = self.start_i + self.grain_len
+
+        self._data = list(self._get_grain_ranges())
 
     def __iter__(self):
-        return chain(*self._get_subiterators())
-
-    def _sanitise_out(self, out):
-        if out is None:
-            out = np.empty(self.window.shape, dtype=np.float32)
-        else:
-            out = sanitise_arg("out", sanitiser_name="array_1d_float")
-
-            if out.shape != self.window.shape:
-                raise ValueError("'out' should have same shape as 'window'")
-
-        return out
+        return iter(self._data)
 
     def _get_grain_num(self, *, start_i=None, stop_i=None):
         if stop_i is None:
             return (start_i - self.start_i) // self.interval_len
         else:
             return (stop_i - self._start_grain_stop_i) // self.interval_len
-
-    def _get_grain_start_i(self, grain_num):
-        return self.start_i + grain_num * self.interval_len
-
-    def _get_grain_stop_i(self, grain_num):
-        return self._start_grain_stop_i + grain_num * self.interval_len
-
-    def _get_start_indices_from_grain_range(self, grain_range):
-        return range(
-            self._get_grain_start_i(grain_range.start),
-            self._get_grain_start_i(grain_range.stop),
-            self.interval_len
-        )
-
-    def _get_stop_indices_from_grain_range(self, grain_range):
-        return range(
-            self._get_grain_stop_i(grain_range.start),
-            self._get_grain_stop_i(grain_range.stop),
-            self.interval_len
-        )
 
     def _get_clamped_grain_range(self, start_grain_num, stop_grain_num):
         return range(
@@ -116,14 +72,14 @@ class AudioToGrains:
 
     def _get_draft_exiting_grain_range(self):
         start_grain_stop_i = (
-            (self._start_grain_stop_i - len(self.audio) - 1)
+            (self._start_grain_stop_i - self.audio_len - 1)
             % self.interval_len
-            + len(self.audio) + 1
+            + self.audio_len + 1
         )
         stop_grain_start_i = (
-            (self.start_i - len(self.audio))
+            (self.start_i - self.audio_len)
             % self.interval_len
-            + len(self.audio)
+            + self.audio_len
         )
 
         start_grain_num = self._get_grain_num(stop_i=start_grain_stop_i)
@@ -153,30 +109,103 @@ class AudioToGrains:
             if grain_range.start != grain_range.stop:
                 yield name, grain_range
 
-    def _get_before_iterator(self, grain_range):
-        out = self.out
+    def get_grain_start_i(self, grain_num):
+        return self.start_i + grain_num * self.interval_len
 
-        def iterator():
-            out.fill(0)
+    def get_grain_stop_i(self, grain_num):
+        return self._start_grain_stop_i + grain_num * self.interval_len
+
+    def get_start_indices_from_grain_range(self, grain_range):
+        return range(
+            self.get_grain_start_i(grain_range.start),
+            self.get_grain_start_i(grain_range.stop),
+            self.interval_len
+        )
+
+    def get_stop_indices_from_grain_range(self, grain_range):
+        return range(
+            self.get_grain_stop_i(grain_range.start),
+            self.get_grain_stop_i(grain_range.stop),
+            self.interval_len
+        )
+
+
+class AudioToGrains:
+    __slots__ = [
+        "audio",
+        "start_i", "interval_len", "num_of_iterations",
+        "window", "out",
+        "_grain_ranges"
+    ]
+
+    def __init__(
+        self, audio, *,
+        start_i, interval_len, num_of_iterations,
+        window,
+        out=None
+    ):
+        (
+            self.audio,
+            self.start_i, self.interval_len, self.num_of_iterations,
+            self.window
+        ) = sanitise_args(
+            "audio",
+            "start_i", "interval_len", "num_of_iterations",
+            "window"
+        )
+        self.out = self._sanitise_out(out)
+
+        self._grain_ranges = _GrainRanges(
+            start_i=start_i,
+            interval_len=interval_len,
+            num_of_iterations=num_of_iterations,
+            audio_len=len(audio),
+            grain_len=len(window)
+        )
+
+    def __iter__(self):
+        subiterators = list(self._get_subiterators())
+
+        if len(subiterators) == 1:
+            return subiterators[0]
+        else:
+            return chain(*subiterators)
+
+    def _sanitise_out(self, out):
+        if out is None:
+            out = np.empty(self.window.shape, dtype=np.float32)
+        else:
+            out = sanitise_arg("out", sanitiser_name="array_1d_float")
+
+            if out.shape != self.window.shape:
+                raise ValueError("'out' should have same shape as 'window'")
+
+        return out
+
+    def _get_before_iterator(self, grain_range):
+        def iterator(fill_out=self.out.fill, grain_range=grain_range):
+            fill_out(0)
 
             for _ in grain_range:
-                yield 
+                yield
 
         return iterator()
 
     def _get_entering_iterator(self, grain_range):
-        stop_indices = _get_stop_indices_from_grain_range(grain_range)
-
-        multiply = np.multiply
-        audio = self.audio
-        window = self.window
-        out = self.out
+        stop_indices = self._grain_ranges.get_stop_indices_from_grain_range(
+            grain_range
+        )
 
         if grain_range.start == 0:
-            view_to_zero = out[:-stop_indices.start]
+            view_to_zero = self.out[:-stop_indices.start]
 
-            def iterator():
-                view_to_zero.fill(0)
+            def iterator(
+                fill_view_to_zero=view_to_zero.fill,
+                stop_indices=stop_indices,
+                multiply=np.multiply,
+                audio=self.audio, window=self.window, out=self.out
+            ):
+                fill_view_to_zero(0)
 
                 for stop_i in stop_indices:
                     multiply(
@@ -187,7 +216,11 @@ class AudioToGrains:
 
                     yield
         else:
-            def iterator():
+            def iterator(
+                stop_indices=stop_indices,
+                multiply=multiply,
+                audio=self.audio, window=self.window, out=self.out
+            ):
                 for stop_i in stop_indices:
                     multiply(
                         audio[:stop_i],
@@ -200,15 +233,18 @@ class AudioToGrains:
         return iterator()
 
     def _get_full_iterator(self, grain_range):
-        start_indices = self._get_start_indices_from_grain_range(grain_range)
+        start_indices = self._grain_ranges.get_start_indices_from_grain_range(
+            grain_range
+        )
 
-        multiply = np.multiply
-        audio = self.audio
-        window = self.window
-        grain_len = len(window)
-        out = self.out
-
-        def iterator():
+        def iterator(
+            start_indices=start_indices,
+            multiply=np.multiply,
+            audio=self.audio,
+            window=self.window,
+            grain_len=len(self.window),
+            out=self.out
+        ):
             for start_i in start_indices:
                 multiply(
                     audio[start_i:start_i + grain_len],
@@ -220,12 +256,11 @@ class AudioToGrains:
 
         return iterator()
 
+    # unoptimised edge case
     def _get_island_iterator(self, grain_range):
-        # unoptimised edge case
-
-        start_indices = _get_start_indices_from_grain_range(grain_range)
-
-        for start_i in start_indices:
+        for start_i in self._grain_ranges.get_start_indices_from_grain_range(
+            grain_range
+        ):
             stop_i = start_i + len(self.window)
 
             before_len = -start_i
@@ -242,18 +277,20 @@ class AudioToGrains:
             yield
 
     def _get_exiting_iterator(self, grain_range):
-        start_indices = self._get_start_indices_from_grain_range(grain_range)
+        start_indices = self._grain_ranges.get_start_indices_from_grain_range(
+            grain_range
+        )
 
-        multiply = np.multiply
-        audio = self.audio
-        window = self.window
-        out = self.out
-        interval_len = self.interval_len
-
-        prev_full_len = len(self.window)
-        curr_full_len = self.audio_len - start_indices[0]
-
-        def iterator():
+        def iterator(
+            start_indices=start_indices,
+            multiply=np.multiply,
+            audio=self.audio,
+            window=self.window,
+            out=self.out,
+            interval_len=self.interval_len,
+            prev_full_len=len(self.window),
+            curr_full_len=len(audio) - start_indices[0]
+        ):
             for start_i in start_indices:
                 multiply(
                     audio[start_i:],
@@ -338,5 +375,145 @@ class AudioToHannGrains:
             delay_audio_samples=delay_audio_samples_remainder
         )
 
+
 class AddGrainsToAudio:
-    +...
+    __slots__ = [
+        "grain",
+        "start_i", "interval_len", "num_of_iterations",
+        "subtract",
+        "audio"
+    ]
+
+    def __init__(
+        self, grain, *,
+        start_i, interval_len, num_of_iterations,
+        subtract=False,
+        audio
+    ):
+        +...+sanitise_args("grain", "start_i", "interval_len", "num_of_iterations", "subtract", "audio")
+
+        self._grain_ranges = _GrainRanges(
+            start_i=start_i,
+            interval_len=interval_len,
+            num_of_iterations=num_of_iterations,
+            audio_len=len(audio),
+            grain_len=len(grain)
+        )
+
+    def __iter__(self):
+        subiterators = list(self._get_subiterators())
+
+        if len(subiterators) == 1:
+            return subiterators[0]
+        else:
+            return chain(*subiterators)
+
+    def _get_before_iterator(self, grain_range):
+        def iterator(grain_range=grain_range):
+            for _ in grain_range:
+                yield
+
+        return iterator()
+
+    def _get_entering_iterator(self, grain_range):
+        stop_indices = self._grain_ranges.get_stop_indices_from_grain_range(
+            grain_range
+        )
+
+        if self.subtract:
+            def iterator(
+                stop_indices=stop_indices,
+                grain=self.grain, audio=self.audio
+            ):
+                for stop_i in stop_indices:
+                    audio[:stop_i] -= grain[-stop_i:]
+
+                    yield
+        else:
+            def iterator(
+                stop_indices=stop_indices,
+                grain=self.grain, audio=self.audio
+            ):
+                for stop_i in stop_indices:
+                    audio[:stop_i] += grain[-stop_i:]
+
+                    yield
+
+        return iterator()
+
+    def _get_full_iterator(self, grain_range):
+        start_indices = self._grain_ranges.get_start_indices_from_grain_range(
+            grain_range
+        )
+
+        if self.subtract:
+            def iterator(
+                start_indices=start_indices,
+                grain=self.grain, audio=self.audio, grain_len=len(self.grain)
+            ):
+                for start_i in start_indices:
+                    audio[start_i:start_i + grain_len] -= grain
+
+                    yield
+        else:
+            def iterator(
+                start_indices=start_indices,
+                grain=self.grain, audio=self.audio, grain_len=len(self.grain)
+            ):
+                for start_i in start_indices:
+                    audio[start_i:start_i + grain_len] += grain
+
+                    yield
+
+        return iterator()
+
+    # unoptimised edge case
+    def _get_island_iterator(self, grain_range):
+        for start_i in self._grain_ranges.get_start_indices_from_grain_range(
+            grain_range
+        ):
+            grain_start_i = -start_i
+            grain_stop_i = grain_start_i + len(self.audio)
+
+            grain_island = self.grain[grain_start_i:grain_stop_i]
+
+            if self.subtract:
+                self.audio -= grain_island
+            else:
+                self.audio += grain_island
+
+            yield
+
+    def _get_exiting_iterator(self, grain_range):
+        start_indices = self._grain_ranges.get_start_indices_from_grain_range(
+            grain_range
+        )
+
+        if self.subtract:
+            def iterator(
+                start_indices=start_indices,
+                grain=self.grain, audio=self.audio, audio_len=len(self.audio)
+            ):
+                for start_i in start_indices:
+                    audio[start_i:] -= grain[:audio_len - start_i]
+
+                    yield
+        else:
+            def iterator(
+                start_indices=start_indices,
+                grain=self.grain, audio=self.audio, audio_len=len(self.audio)
+            ):
+                for start_i in start_indices:
+                    audio[start_i:] += grain[:audio_len - start_i]
+
+                    yield
+
+        return iterator()
+
+    _get_after_iterator = _get_before_iterator
+
+    def _get_subiterators(self):
+        for name, grain_range in self._grain_ranges:
+            bound_method = getattr(self, f"_get_{name}_iterator")
+
+            yield bound_method(grain_range)

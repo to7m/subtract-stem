@@ -10,12 +10,10 @@ class UnsafeDivider:
         self.a, self.b, self.out = sanitise_a_b_out(a, b, out)
 
     def __iter__(self):
-        divide = np.divide
-        a, b, out = self.a, self.b, self.out
-
-        def iterator():
+        def iterator(divide=np.divide, a=self.a, b=self.b, out=self.out):
             while True:
                 divide(a, b, out=out)
+
                 yield
 
         return iterator()

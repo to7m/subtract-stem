@@ -40,11 +40,11 @@ class SafeDivider:
         )
 
     def __iter__(self):
-        unsafe_divider_iter = iter(self._unsafe_divider)
-        generate_is_safes_iter = iter(self._generate_is_safes)
-        interpolate_missing_iter = iter(self._interpolate_missing)
-
-        def iterator():
+        def iterator(
+            unsafe_divider_iter=iter(self._unsafe_divider),
+            generate_is_safes_iter=iter(self._generate_is_safes),
+            interpolate_missing_iter=iter(self._interpolate_missing)
+        ):
             while True:
                 next(unsafe_divider_iter)
                 next(generate_is_safes_iter)
