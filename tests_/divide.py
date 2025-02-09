@@ -19,7 +19,7 @@ def safe_divide():
             max_abs_result=3.5
         )
 
-        print(result.max())
+        print(np.abs(result).max())
 
 
 def all_divide():
