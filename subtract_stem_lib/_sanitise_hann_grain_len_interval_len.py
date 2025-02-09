@@ -1,4 +1,5 @@
 from .defaults import OVERLAP
+from .sanitisation import sanitise_arg
 
 
 def sanitise_hann_grain_len_interval_len(grain_len, interval_len):

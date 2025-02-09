@@ -30,27 +30,12 @@ def _make_sanitise_array(dimensions=None, dtype=None, allow_empty=False):
 
 
 sanitise_array_1d = _make_sanitise_array(dimensions=1)
-sanitise_array_1d_complex \
-    = _make_sanitise_array(dimensions=1, dtype=np.complex64)
 sanitise_array_1d_bool = sanitise_is_safe \
     = _make_sanitise_array(dimensions=1, dtype=bool)
-sanitise_array_1d_float = _make_sanitise_array(dimensions=1, dtype=np.float32)
-
-
-def _make_sanitise_int(allow_convert=False, range_=None):
-    def sanitise_int(val, name):
-        if allow_convert:
-            val = int(val)
-        elif type(val) is not int:
-            raise TypeError(f"{name!r} should be an int")
-
-        if range_ == ">=0":
-            if val < 0:
-                raise ValueError(f"{name!r} should not be less than zero")
-
-        return val
-
-    return sanitise_int
+sanitise_array_1d_float = sanitise_audio = sanitise_window \
+    = _make_sanitise_array(dimensions=1, dtype=np.float32)
+sanitise_array_1d_complex \
+    = _make_sanitise_array(dimensions=1, dtype=np.complex64)
 
 
 def _make_sanitise_float(allow_convert=False, range_=None):
@@ -69,8 +54,34 @@ def _make_sanitise_float(allow_convert=False, range_=None):
     return sanitise_float
 
 
+sanitise_delay_audio_samples = _make_sanitise_float(allow_convert=True)
 sanitise_max_abs_result \
     = _make_sanitise_float(allow_convert=True, range_=">0")
+
+
+def _make_sanitise_int(allow_convert=False, range_=None):
+    def sanitise_int(val, name):
+        if allow_convert:
+            val = int(val)
+        elif type(val) is not int:
+            raise TypeError(f"{name!r} should be an int")
+
+        if range_ == ">=1":
+            if val < 1:
+                raise ValueError(f"{name!r} should be at least 1")
+        if range_ == ">=2":
+            if val < 2:
+                raise ValueError(f"{name!r} should be at least 2")
+
+        return val
+
+    return sanitise_int
+
+
+sanitise_start_i = _make_sanitise_int()
+sanitise_interval_len = sanitise_num_of_iterations \
+    = _make_sanitise_int(range_=">=1")
+sanitise_grain_len = _make_sanitise_int(range_=">=2")
 
 
 ##############################################################################

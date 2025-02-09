@@ -5,6 +5,7 @@ from .divide import (
     UnsafeDivider, GenerateIsSafes, InterpolateMissing,
     SafeDivider, safe_divide, Ataabtrnfatbaa, ataabtrnfatbaa
 )
+from .grains import AudioToGrains, AudioToHannGrains, AddGrainsToAudio
 
 
 # There's no thread-safe way of doing this so I'm just putting it here to make

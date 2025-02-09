@@ -1,7 +1,8 @@
 from math import tau
 import numpy as np
 
-from ..defaults import GRAIN_LEN
+from .defaults import GRAIN_LEN
+from .sanitisation import sanitise_arg, sanitise_args
 from ._sanitise_hann_grain_len_interval_len import (
     sanitise_hann_grain_len_interval_len
 )
@@ -62,7 +63,7 @@ class _GrainRanges:
 
     def _get_draft_entering_grain_range(self):
         start_grain_stop_i \
-            (self._start_grain_stop_i - 1) % self.interval_len + 1
+            = (self._start_grain_stop_i - 1) % self.interval_len + 1
         stop_grain_start_i = self.start_i % self.interval_len
 
         start_grain_num = self._get_grain_num(stop_i=start_grain_stop_i)
@@ -369,7 +370,7 @@ class AudioToHannGrains:
     def _get_window(self):
         delay_audio_samples_remainder = self.delay_audio_samples % 1
 
-        window = get_hann_window(
+        return get_hann_window(
             self.grain_len,
             interval_len=self.interval_len,
             delay_audio_samples=delay_audio_samples_remainder
