@@ -1,4 +1,7 @@
+import numpy as np
+
 from ..defaults import MAX_ABS_RESULT
+from ..sanitisation import sanitise_arg
 from .unsafe_divide import UnsafeDivider
 from .is_safe import GenerateIsSafes
 from .interpolate_missing import InterpolateMissing
@@ -52,11 +55,9 @@ class SafeDivider:
 
                 yield
 
-        return iterator
+        return iterator()
 
-    def _sanitise_intermediates(
-        self, intermediate_a, intermediate_b, *, shape
-    ):
+    def _sanitise_intermediates(self, intermediate_a, intermediate_b):
         for arr, dtype, name, sanitiser_name in (
             (intermediate_a, np.float32, "intermediate_a", "array_1d_float"),
             (intermediate_b, bool, "intermediate_b", "array_1d_bool"),

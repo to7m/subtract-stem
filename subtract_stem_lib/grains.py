@@ -390,7 +390,17 @@ class AddGrainsToAudio:
         subtract=False,
         audio
     ):
-        +...+sanitise_args("grain", "start_i", "interval_len", "num_of_iterations", "subtract", "audio")
+        (
+            self.grain,
+            self.start_i, self.interval_len, self.num_of_iterations,
+            self.subtract,
+            self.audio
+        ) = sanitise_args(
+            "grain",
+            "start_i", "interval_len", "num_of_iterations",
+            "subtract",
+            "audio"
+        )
 
         self._grain_ranges = _GrainRanges(
             start_i=start_i,

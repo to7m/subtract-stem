@@ -1,4 +1,7 @@
+import numpy as np
+
 from ..defaults import MAX_ABS_RESULT
+from ..sanitisation import sanitise_arg
 
 
 class GenerateIsSafes:
@@ -10,7 +13,7 @@ class GenerateIsSafes:
         intermediate=None,  # numpy.float32
         out=None
     ):
-        self.a = sanitise_arg("a", sanitiser_name="array_1d_float_complex")
+        self.a = sanitise_arg("a", sanitiser_name="array_1d_complex")
         self.max_abs_result = sanitise_arg("max_abs_result")
         self.intermediate, self.out \
             = self._sanitise_intermediate_and_out(intermediate, out)

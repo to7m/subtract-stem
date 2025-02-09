@@ -4,20 +4,71 @@
 ##############################################################################
 
 
-def _make_sanitise_int(allow_convert=False, limit=None):
+import numpy as np
+
+
+def _make_sanitise_array(dimensions=None, dtype=None, allow_empty=False):
+    def sanitise_array(val, name):
+        if type(val) is not np.ndarray:
+            raise TypeError(f"{name!r} should be a numpy.ndarray")
+
+        if dimensions is not None:
+            if len(val.shape) != dimensions:
+                raise ValueError(f"{name!r} should be {dimensions}-D")
+
+        if dtype is not None:
+            if val.dtype is not np.dtype(dtype):
+                raise TypeError(f"{name!r} should have dtype {dtype}")
+
+        if not allow_empty:
+            if 0 in val.shape:
+                raise ValueError(f"{name!r} should not be empty")
+
+        return val
+
+    return sanitise_array
+
+
+sanitise_array_1d = _make_sanitise_array(dimensions=1)
+sanitise_array_1d_complex \
+    = _make_sanitise_array(dimensions=1, dtype=np.complex64)
+sanitise_is_safe = _make_sanitise_array(dimensions=1, dtype=bool)
+
+
+def _make_sanitise_int(allow_convert=False, range_=None):
     def sanitise_int(val, name):
         if allow_convert:
             val = int(val)
         elif type(val) is not int:
             raise TypeError(f"{name!r} should be an int")
 
-        if limit == ">=0":
+        if range_ == ">=0":
             if val < 0:
                 raise ValueError(f"{name!r} should not be less than zero")
 
         return val
 
     return sanitise_int
+
+
+def _make_sanitise_float(allow_convert=False, range_=None):
+    def sanitise_float(val, name):
+        if allow_convert:
+            val = float(val)
+        elif type(val) is not float:
+            raise TypeError(f"{name!r} should be a float")
+
+        if range_ == ">0":
+            if val <= 0:
+                raise ValueError(f"{name!r} should be greater than 0.0")
+
+        return val
+
+    return sanitise_float
+
+
+sanitise_max_abs_result \
+    = _make_sanitise_float(allow_convert=True, range_=">0")
 
 
 ##############################################################################
