@@ -1,6 +1,7 @@
 """Apply to 'a' and 'b' the rotation needed for 'a' to become abs(a)."""
 
 
+from math import pi
 import numpy as np
 
 

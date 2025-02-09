@@ -83,7 +83,8 @@ def safe_divide(
     safe_divider = SafeDivider(
         a, b,
         max_abs_result=max_abs_result,
-        intermediate=intermediate,
+        intermediate_a=intermediate_a,
+        intermediate_b=intermediate_b,
         out=out
     )
 
