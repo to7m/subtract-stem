@@ -32,8 +32,8 @@ class SafeDivider:
         self._generate_is_safes = GenerateIsSafes(
             self.out,
             max_abs_result=max_abs_result,
-            intermediate=intermediate_a,
-            out=intermediate_b
+            intermediate=self.intermediate_a,
+            out=self.intermediate_b
         )
 
         self.max_abs_result = self._generate_is_safes.max_abs_result

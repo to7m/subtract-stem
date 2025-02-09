@@ -4,6 +4,8 @@
 from math import pi
 import numpy as np
 
+from ..sanitisation import sanitise_arg
+
 
 ONE_ROTATED_CONJUGATED = (-1) ** (-1 / pi)
 
@@ -32,14 +34,17 @@ class Ataabtrnfatbaa:
     def __iter__(self):
         def iterator(
             ONE_ROTATED_CONJUGATED=ONE_ROTATED_CONJUGATED,
-            angle=np.angle, power=np.power, multiply=np.multiply,
+            arctan2=np.arctan2, power=np.power, multiply=np.multiply,
             abs_=np.abs,
             a=self.a, b=self.b,
+            a_real=self.a.real, a_imag=self.a.imag,
             intermediate=self.intermediate,
             out_a=self.out_a, out_b=self.out_b
         ):
             while True:
-                angle(a, out=out_a)
+                # because numpy.angle doesn't support 'out' argument
+                arctan2(a_imag, a_real, out=out_a)
+
                 power(ONE_ROTATED_CONJUGATED, out_a, out=intermediate)
                 multiply(b, intermediate, out=out_b)
 
