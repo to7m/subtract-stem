@@ -38,6 +38,16 @@ sanitise_array_1d_complex \
     = _make_sanitise_array(dimensions=1, dtype=np.complex64)
 
 
+def _sanitise_bool(val, name):
+    if type(val) is bool:
+        return val
+    else:
+        raise TypeError(f"{name!r} should be a bool")
+
+
+sanitise_subtract = _sanitise_bool
+
+
 def _make_sanitise_float(allow_convert=False, range_=None):
     def sanitise_float(val, name):
         if allow_convert:

@@ -1,3 +1,4 @@
+from itertools import chain
 from math import tau
 import numpy as np
 
@@ -219,7 +220,7 @@ class AudioToGrains:
         else:
             def iterator(
                 stop_indices=stop_indices,
-                multiply=multiply,
+                multiply=np.multiply,
                 audio=self.audio, window=self.window, out=self.out
             ):
                 for stop_i in stop_indices:
@@ -290,7 +291,7 @@ class AudioToGrains:
             out=self.out,
             interval_len=self.interval_len,
             prev_full_len=len(self.window),
-            curr_full_len=len(audio) - start_indices[0]
+            curr_full_len=len(self.audio) - start_indices[0]
         ):
             for start_i in start_indices:
                 multiply(
@@ -382,7 +383,8 @@ class AddGrainsToAudio:
         "grain",
         "start_i", "interval_len", "num_of_iterations",
         "subtract",
-        "audio"
+        "audio",
+        "_grain_ranges"
     ]
 
     def __init__(
