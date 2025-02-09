@@ -83,7 +83,7 @@ def sanitise_arg(
 
     if val is _UNIQUE_NONE:
         if args_dict is None:
-            val = inspect.stack()[1 + additional_frames].f_locals[name]
+            val = inspect.stack()[1 + additional_frames].frame.f_locals[name]
         else:
             val = args_dict[name]
 

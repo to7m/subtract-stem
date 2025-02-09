@@ -6,7 +6,7 @@ from .interpolate_missing import InterpolateMissing
 
 class SafeDivider:
     __slots__ = [
-        "_unsafe_divider", "_generate_is_safes", "_interpolate_missing"
+        "_unsafe_divider", "_generate_is_safes", "_interpolate_missing",
         "a", "b", "max_abs_result", "intermediate_a", "intermediate_b", "out"
     ]
 
