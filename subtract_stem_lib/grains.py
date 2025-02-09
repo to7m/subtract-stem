@@ -134,10 +134,10 @@ class _GrainRanges:
 
 class AudioToGrains:
     __slots__ = [
+        "_grain_ranges",
         "audio",
         "start_i", "interval_len", "num_of_iterations",
-        "window", "out",
-        "_grain_ranges"
+        "window", "out"
     ]
 
     def __init__(
@@ -320,11 +320,11 @@ class AudioToGrains:
 
 class AudioToHannGrains:
     __slots__ = [
+        "_audio_to_grains",
         "audio",
         "start_i", "interval_len", "num_of_iterations",
         "grain_len", "delay_audio_samples",
-        "out",
-        "_audio_to_grains"
+        "out"
     ]
 
     def __init__(
@@ -380,11 +380,11 @@ class AudioToHannGrains:
 
 class AddGrainsToAudio:
     __slots__ = [
+        "_grain_ranges",
         "grain",
         "start_i", "interval_len", "num_of_iterations",
         "subtract",
-        "audio",
-        "_grain_ranges"
+        "audio"
     ]
 
     def __init__(
