@@ -32,7 +32,7 @@ def _make_sanitise_array(dimensions=None, dtype=None, allow_empty=False):
 sanitise_array_1d = _make_sanitise_array(dimensions=1)
 sanitise_array_1d_bool = sanitise_is_safe \
     = _make_sanitise_array(dimensions=1, dtype=bool)
-sanitise_array_1d_float = sanitise_audio = sanitise_window \
+sanitise_array_1d_float = sanitise_audio = sanitise_grain = sanitise_window \
     = _make_sanitise_array(dimensions=1, dtype=np.float32)
 sanitise_array_1d_complex \
     = _make_sanitise_array(dimensions=1, dtype=np.complex64)
