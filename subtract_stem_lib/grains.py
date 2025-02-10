@@ -97,7 +97,7 @@ class _GrainRanges:
 
         if exiting_draft.start < entering_draft.stop:
             yield "entering", range(entering_draft.start, exiting_draft.start)
-            yield "island", range(exiting.draft_start, entering_draft.stop)
+            yield "island", range(exiting_draft.start, entering_draft.stop)
             yield "exiting", range(entering_draft.stop, exiting_draft.stop)
         else:
             yield "entering", range(entering_draft.start, entering_draft.stop)
@@ -272,7 +272,7 @@ class AudioToGrains:
             np.multiply(
                 self.audio,
                 self.window[before_len:-after_len],
-                out=self.out
+                out=self.out[before_len:-after_len]
             )
             self.out[-after_len:] = 0
 
