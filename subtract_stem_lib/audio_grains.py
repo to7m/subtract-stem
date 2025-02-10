@@ -320,7 +320,7 @@ class AudioToGrains:
 
 class AudioToHannGrains:
     __slots__ = [
-        "_audio_to_grains",
+        "_audio_to_grains", "_delay_audio_samples_remainder",
         "audio",
         "start_i", "interval_len", "num_of_iterations",
         "grain_len",
@@ -341,9 +341,14 @@ class AudioToHannGrains:
         self.delay_audio_samples = sanitise_arg("delay_audio_samples")
         self.out = self._sanitise_out(out)
 
+        self._delay_audio_samples_remainder = self.delay_audio_samples % 1
+        delay_audio_samples_whole = int(
+            self.delay_audio_samples - self._delay_audio_samples_remainder)
+        
+
         self._audio_to_grains = AudioToGrains(
             audio,
-            start_i=start_i - int(self.delay_audio_samples),
+            start_i=start_i - delay_audio_samples_whole,
             interval_len=interval_len,
             num_of_iterations=num_of_iterations,
             window=self._get_window(),
@@ -371,12 +376,10 @@ class AudioToHannGrains:
         return out
 
     def _get_window(self):
-        delay_audio_samples_remainder = self.delay_audio_samples % 1
-
         return get_hann_window(
             self.grain_len,
             interval_len=self.interval_len,
-            delay_audio_samples=delay_audio_samples_remainder
+            delay_audio_samples=self._delay_audio_samples_remainder
         )
 
 
