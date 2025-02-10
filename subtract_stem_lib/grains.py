@@ -188,7 +188,7 @@ class AudioToGrains:
         def iterator(fill_out=self.out.fill, grain_range=grain_range):
             fill_out(0)
 
-            for _ in grain_range:
+            for i in grain_range:
                 yield
 
         return iterator()
@@ -254,7 +254,7 @@ class AudioToGrains:
                     out=out
                 )
 
-            yield
+                yield
 
         return iterator()
 
@@ -323,14 +323,16 @@ class AudioToHannGrains:
         "_audio_to_grains",
         "audio",
         "start_i", "interval_len", "num_of_iterations",
-        "grain_len", "delay_audio_samples",
+        "grain_len",
+        "delay_audio_samples",
         "out"
     ]
 
     def __init__(
         self, audio, *,
         start_i, interval_len, num_of_iterations,
-        grain_len=GRAIN_LEN, delay_audio_samples=0.0,
+        grain_len=GRAIN_LEN,
+        delay_audio_samples=0.0,
         out=None
     ):
         self.start_i = sanitise_arg("start_i")
@@ -345,7 +347,7 @@ class AudioToHannGrains:
             interval_len=interval_len,
             num_of_iterations=num_of_iterations,
             window=self._get_window(),
-            out=out
+            out=self.out
         )
 
         self.audio = audio

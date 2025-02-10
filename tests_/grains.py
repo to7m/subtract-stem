@@ -3,32 +3,47 @@ import numpy as np
 import subtract_stem_lib as ssl
 
 
-def test_grains():
+def _test_grains(
+    *,
+    audio_len=10,
+    start_i=-3000, interval_len=111, num_of_iterations=150,
+    grain_len=999,
+):
     rng = np.random.default_rng(0)
 
-    for audio_len in 25, 10_000:
-        #audio = rng.random(audio_len, dtype=np.float32)
-        audio = np.ones(audio_len, dtype=np.float32)
+    audio = np.ones(audio_len, dtype=np.float32)
 
-        for overlap in range(2, 5):
-            audio_to_hann_grains = ssl.AudioToHannGrains(
-                audio,
-                start_i=-307, interval_len=30, num_of_iterations=400,
-                grain_len=30 * overlap
-            )
+    audio_to_hann_grains = ssl.AudioToHannGrains(
+        audio,
+        start_i=start_i,
+        interval_len=interval_len,
+        num_of_iterations=num_of_iterations,
+        grain_len=grain_len
+    )
 
-            grain = audio_to_hann_grains.out
+    grain = audio_to_hann_grains.out
 
-            result_audio = np.zeros(audio_len, dtype=np.float32)
+    result_audio = audio.copy()
 
-            add_grains_to_audio = ssl.AddGrainsToAudio(
-                grain,
-                start_i=-307, interval_len=30, num_of_iterations=400,
-                subtract=True,
-                audio=result_audio
-            )
+    add_grains_to_audio = ssl.AddGrainsToAudio(
+        grain,
+        start_i=start_i,
+        interval_len=interval_len,
+        num_of_iterations=num_of_iterations,
+        subtract=True,
+        audio=result_audio
+    )
 
-            for _ in zip(audio_to_hann_grains, add_grains_to_audio):
-                pass
+    for i, _ in enumerate(zip(audio_to_hann_grains, add_grains_to_audio)):
+        pass
 
-            print(np.abs(result_audio - audio).max())
+    if i != num_of_iterations - 1:
+        raise Exception("test failed")
+
+    if np.abs(result_audio).max() > 0.000_001:
+        raise Exception("test failed")
+
+
+def test_grains():
+
+    _test_grains()
