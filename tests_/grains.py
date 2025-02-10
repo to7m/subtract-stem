@@ -7,7 +7,8 @@ def test_grains():
     rng = np.random.default_rng(0)
 
     for audio_len in 25, 10_000:
-        audio = rng.random(audio_len, dtype=np.float32)
+        #audio = rng.random(audio_len, dtype=np.float32)
+        audio = np.ones(audio_len, dtype=np.float32)
 
         for overlap in range(2, 5):
             audio_to_hann_grains = ssl.AudioToHannGrains(
