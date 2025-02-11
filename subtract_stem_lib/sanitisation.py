@@ -34,7 +34,7 @@ sanitise_array_1d_bool = sanitise_is_safe \
     = _make_sanitise_array(dimensions=1, dtype=bool)
 sanitise_array_1d_float = sanitise_audio = sanitise_grain = sanitise_window \
     = _make_sanitise_array(dimensions=1, dtype=np.float32)
-sanitise_array_1d_complex \
+sanitise_array_1d_complex = sanitise_spectrum \
     = _make_sanitise_array(dimensions=1, dtype=np.complex64)
 
 
@@ -45,7 +45,39 @@ def _sanitise_bool(val, name):
         raise TypeError(f"{name!r} should be a bool")
 
 
+def sanitise_buffer_data(val, name):
+    if type(val) is not list:
+        raise TypeError(f"{name!r} should be a list")
+
+    if len(val) == 0:
+        raise ValueError(f"{name!r} should not be empty")
+
+    for arr in val:
+        if type(arr) is not np.ndarray:
+            raise TypeError(f"{name!r} should contain only numpy.ndarrays")
+
+    for arr in val[1:]:
+        if arr.shape != val[0].shape:
+            raise ValueError(
+                f"shapes of arrays in {name!r} should all be the same"
+            )
+
+        if arr.dtype is not val[0].dtype:
+            raise TypeError(
+                f"dtypes of arrays in {name!r} should all be the same"
+            )
+
+    return val
+
+
 sanitise_subtract = _sanitise_bool
+
+
+def sanitise_constructor(val, name):
+    if callable(val):
+        return val
+    else:
+        raise TypeError(f"{name!r} should be callable")
 
 
 def _make_sanitise_float(allow_convert=False, range_=None):
@@ -88,8 +120,8 @@ def _make_sanitise_int(allow_convert=False, range_=None):
     return sanitise_int
 
 
-sanitise_start_i = _make_sanitise_int()
-sanitise_interval_len = sanitise_num_of_iterations \
+sanitise_lookbehind = sanitise_start_i = _make_sanitise_int()
+sanitise_interval_len = sanitise_num_of_items = sanitise_num_of_iterations \
     = _make_sanitise_int(range_=">=1")
 sanitise_grain_len = _make_sanitise_int(range_=">=2")
 
