@@ -1,7 +1,7 @@
 import numpy as np
 
 
-from .hone_in import HonerIn, hone_in
+from .hone_in import hone_in
 from .divide import (
     UnsafeDivider, GenerateIsSafes, InterpolateMissing,
     SafeDivider, safe_divide, Ataabtrnfatbaa, ataabtrnfatbaa

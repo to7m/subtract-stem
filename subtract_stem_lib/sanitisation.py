@@ -45,6 +45,9 @@ def _sanitise_bool(val, name):
         raise TypeError(f"{name!r} should be a bool")
 
 
+sanitise_highest_wins = _sanitise_bool
+
+
 def sanitise_buffer_data(val, name):
     if type(val) is not list:
         raise TypeError(f"{name!r} should be a list")
@@ -73,11 +76,14 @@ def sanitise_buffer_data(val, name):
 sanitise_subtract = _sanitise_bool
 
 
-def sanitise_constructor(val, name):
+def _sanitise_callable(val, name):
     if callable(val):
         return val
     else:
         raise TypeError(f"{name!r} should be callable")
+
+
+sanitise_constructor = sanitise_scoring_function = _sanitise_callable
 
 
 def _make_sanitise_float(allow_convert=False, range_=None):
@@ -87,7 +93,13 @@ def _make_sanitise_float(allow_convert=False, range_=None):
         elif type(val) is not float:
             raise TypeError(f"{name!r} should be a float")
 
-        if range_ == ">0":
+        if range_ == "!=0":
+            if val == 0:
+                raise ValueError(f"{name!r} should not be equal to 0.0")
+        elif range_ == ">=0":
+            if val < 0:
+                raise ValueError(f"{name!r} should not be less than 0.0")
+        elif range_ == ">0":
             if val <= 0:
                 raise ValueError(f"{name!r} should be greater than 0.0")
 
@@ -96,9 +108,11 @@ def _make_sanitise_float(allow_convert=False, range_=None):
     return sanitise_float
 
 
-sanitise_delay_audio_samples = _make_sanitise_float(allow_convert=True)
-sanitise_max_abs_result \
-    = _make_sanitise_float(allow_convert=True, range_=">0")
+sanitise_delay_audio_samples = sanitise_first_val \
+    = _make_sanitise_float(allow_convert=True)
+sanitise_val_add = _make_sanitise_float(allow_convert=True, range_="!=0")
+sanitise_max_abs_result = sanitise_min_diff \
+    = _make_sanitise_float(allow_convert=True, range_=">=0")
 
 
 def _make_sanitise_int(allow_convert=False, range_=None):
