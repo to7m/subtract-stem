@@ -20,7 +20,6 @@ np.seterr(all="raise", divide="ignore", invalid="ignore")
 
 
 """ old:
-from .hone_in_simple import hone_in
 from .io import load_mono_audio, save_mono_audio
 from .spectra import GenerateSpectra, GenerateStemAndMixSpectra
 from .eq_profile import GenerateSingleEqProfile, GenerateRunningEqProfile
