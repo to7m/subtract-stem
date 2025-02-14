@@ -4,6 +4,8 @@
 ##############################################################################
 
 
+from pathlib import Path
+from fractions import Fraction
 import numpy as np
 
 
@@ -45,7 +47,7 @@ def _sanitise_bool(val, name):
         raise TypeError(f"{name!r} should be a bool")
 
 
-sanitise_highest_wins = _sanitise_bool
+sanitise_error_if_not_mono = sanitise_highest_wins = _sanitise_bool
 
 
 def sanitise_buffer_data(val, name):
@@ -115,6 +117,13 @@ sanitise_max_abs_result = sanitise_min_diff \
     = _make_sanitise_float(allow_convert=True, range_=">=0")
 
 
+def _sanitise_fraction(val, name):
+    return Fraction(val)
+
+
+sanitise_sample_rate = _sanitise_fraction
+
+
 def _make_sanitise_int(allow_convert=False, range_=None):
     def sanitise_int(val, name):
         if allow_convert:
@@ -138,6 +147,15 @@ sanitise_lookbehind = sanitise_start_i = _make_sanitise_int()
 sanitise_interval_len = sanitise_num_of_items = sanitise_num_of_iterations \
     = _make_sanitise_int(range_=">=1")
 sanitise_grain_len = _make_sanitise_int(range_=">=2")
+
+
+def sanitise_path(val, name):
+    if isinstance(val, Path):
+        return val
+    elif type(val) is str:
+        return Path(val)
+    else:
+        raise TypeError(f"{name!r} should be a pathlib.Path or a str")
 
 
 ##############################################################################

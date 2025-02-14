@@ -5,7 +5,7 @@ from .sanitisation import sanitise_arg, sanitise_args
 
 
 def load_audio(path, *, sample_rate=None, error_if_not_mono=True):
-    path, error_if_not_mono = sanitise_arg("path", "error_if_not_mono")
+    path, error_if_not_mono = sanitise_args("path", "error_if_not_mono")
 
     if sample_rate is not None:
         sample_rate = sanitise_arg("sample_rate")
@@ -23,4 +23,4 @@ def load_audio(path, *, sample_rate=None, error_if_not_mono=True):
 
 def save_audio(audio, path, *, sample_rate):
     _, path, sample_rate = sanitise_args("audio", "path", "sample_rate")
-    soundfile.write(path, audio, sample_rate)
+    soundfile.write(path, audio, samplerate=sample_rate, subtype="FLOAT")
