@@ -6,6 +6,7 @@ from .divide import (
     UnsafeDivider, GenerateIsSafes, InterpolateMissing,
     SafeDivider, safe_divide, Ataabtrnfatbaa, ataabtrnfatbaa
 )
+from .io import load_audio, save_audio
 from .audio_grains import AudioToGrains, AudioToHannGrains, AddGrainsToAudio
 from .buffer import Buffer
 from .transforms import (
@@ -20,7 +21,6 @@ np.seterr(all="raise", divide="ignore", invalid="ignore")
 
 
 """ old:
-from .io import load_mono_audio, save_mono_audio
 from .spectra import GenerateSpectra, GenerateStemAndMixSpectra
 from .eq_profile import GenerateSingleEqProfile, GenerateRunningEqProfile
 from .find_delay_stem_s import find_delay_stem_s
