@@ -1,6 +1,5 @@
 import numpy as np
 
-
 from .hone_in import hone_in
 from .divide import (
     UnsafeDivider, GenerateIsSafes, InterpolateMissing,

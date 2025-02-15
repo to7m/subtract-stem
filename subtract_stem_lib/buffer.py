@@ -1,6 +1,9 @@
 import numpy as np
 
-from .sanitisation import sanitise_arg
+from ._pre_buffer_sanitisers import sanitisers
+
+
+sanitise_arg = sanitisers.sanitise_arg
 
 
 class Buffer:
