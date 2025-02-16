@@ -2,7 +2,7 @@ from pathlib import Path
 from fractions import Fraction
 import numpy as np
 
-from _sanitiser_classes import Sanitisers
+from _sanitisation_base import Sanitisers
 
 
 def _make_sanitise_array(dimensions=None, dtype=None, allow_empty=False):
@@ -27,6 +27,7 @@ def _make_sanitise_array(dimensions=None, dtype=None, allow_empty=False):
     return sanitise_array
 
 
+sanitise_array = _make_sanitise_array()
 sanitise_array_1d = _make_sanitise_array(dimensions=1)
 sanitise_array_1d_bool = sanitise_is_safe \
     = _make_sanitise_array(dimensions=1, dtype=bool)
@@ -43,35 +44,8 @@ def _sanitise_bool(val, name):
         raise TypeError(f"{name!r} should be a bool")
 
 
-sanitise_error_if_not_mono = sanitise_highest_wins = _sanitise_bool
-
-
-def sanitise_buffer_data(val, name):
-    if type(val) is not list:
-        raise TypeError(f"{name!r} should be a list")
-
-    if len(val) == 0:
-        raise ValueError(f"{name!r} should not be empty")
-
-    for arr in val:
-        if type(arr) is not np.ndarray:
-            raise TypeError(f"{name!r} should contain only numpy.ndarrays")
-
-    for arr in val[1:]:
-        if arr.shape != val[0].shape:
-            raise ValueError(
-                f"shapes of arrays in {name!r} should all be the same"
-            )
-
-        if arr.dtype is not val[0].dtype:
-            raise TypeError(
-                f"dtypes of arrays in {name!r} should all be the same"
-            )
-
-    return val
-
-
-sanitise_subtract = _sanitise_bool
+sanitise_error_if_not_mono = sanitise_highest_wins sanitise_subtract \
+    = _sanitise_bool
 
 
 def _sanitise_callable(val, name):
@@ -127,6 +101,9 @@ def _make_sanitise_int(allow_convert=False, range_=None):
         elif type(val) is not int:
             raise TypeError(f"{name!r} should be an int")
 
+        if range_ == ">=0":
+            if val < 0:
+                raise ValueError(f"{name!r} should not be less than 0")
         if range_ == ">=1":
             if val < 1:
                 raise ValueError(f"{name!r} should be at least 1")
@@ -139,7 +116,8 @@ def _make_sanitise_int(allow_convert=False, range_=None):
     return sanitise_int
 
 
-sanitise_lookbehind = sanitise_start_i = _make_sanitise_int()
+sanitise_start_i = _make_sanitise_int()
+sanitise_lookbehind = _make_sanitise_int(range_=">=0")
 sanitise_interval_len = sanitise_num_of_items = sanitise_num_of_iterations \
     = _make_sanitise_int(range_=">=1")
 sanitise_grain_len = _make_sanitise_int(range_=">=2")
@@ -155,3 +133,4 @@ def sanitise_path(val, name):
 
 
 sanitisers = Sanitisers.from_current_module()
+sanitise_arg = _sanitisers.sanitise_arg
