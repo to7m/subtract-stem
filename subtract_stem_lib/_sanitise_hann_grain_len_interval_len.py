@@ -1,9 +1,9 @@
 from .defaults import OVERLAP
-from .sanitisation import sanitise_arg
+from ._sanitisation import sanitise_arg as san
 
 
 def sanitise_hann_grain_len_interval_len(grain_len, interval_len):
-    sanitise_arg("grain_len")
+    san("grain_len")
 
     if interval_len is None:
         interval_len, remainder = divmod(grain_len, OVERLAP)
@@ -15,7 +15,7 @@ def sanitise_hann_grain_len_interval_len(grain_len, interval_len):
                 "'interval_len'"
             )
     else:
-        sanitise_arg("interval_len")
+        san("interval_len")
 
         if interval_len >= grain_len:
             raise ValueError("'interval_len' should be less than grain_len")

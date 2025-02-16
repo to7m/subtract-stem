@@ -3,7 +3,7 @@ from math import tau
 import numpy as np
 
 from .defaults import GRAIN_LEN
-from .sanitisation import sanitise_arg, sanitise_args
+from ._sanitisation import sanitise_arg as san, sanitise_args
 from ._sanitise_hann_grain_len_interval_len import (
     sanitise_hann_grain_len_interval_len
 )
@@ -15,7 +15,7 @@ def get_hann_window(
 ):
     _, interval_len \
         = sanitise_hann_grain_len_interval_len(grain_len, interval_len)
-    delay_audio_samples = sanitise_arg("delay_audio_samples")
+    delay_audio_samples = san("delay_audio_samples")
 
     overlap = grain_len // interval_len
 
@@ -177,7 +177,7 @@ class AudioToGrains:
         if out is None:
             out = np.empty(self.window.shape, dtype=np.float32)
         else:
-            out = sanitise_arg("out", sanitiser_name="array_1d_float")
+            out = san("out", "array_1d_float")
 
             if out.shape != self.window.shape:
                 raise ValueError("'out' should have same shape as 'window'")
@@ -335,10 +335,10 @@ class AudioToHannGrains:
         delay_audio_samples=0.0,
         out=None
     ):
-        self.start_i = sanitise_arg("start_i")
+        self.start_i = san("start_i")
         self.grain_len, self.interval_len \
             = sanitise_hann_grain_len_interval_len(grain_len, interval_len)
-        self.delay_audio_samples = sanitise_arg("delay_audio_samples")
+        self.delay_audio_samples = san("delay_audio_samples")
         self.out = self._sanitise_out(out)
 
         self._delay_audio_samples_remainder = self.delay_audio_samples % 1
@@ -366,7 +366,7 @@ class AudioToHannGrains:
         if out is None:
             out = np.empty(self.grain_len, dtype=np.float32)
         else:
-            out = sanitise_arg("out", sanitiser_name="array_1d_float")
+            out = san("out", "array_1d_float")
 
             if len(out) != self.grain_len:
                 raise ValueError(

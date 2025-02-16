@@ -4,7 +4,8 @@
 from math import pi
 import numpy as np
 
-from ..sanitisation import sanitise_arg
+from .._sanitisation import sanitise_arg as san
+from .._sanitise_spectra_buffer import sanitise_spectra_buffer
 
 
 ONE_ROTATED_CONJUGATED = (-1) ** (-1 / pi)
@@ -22,11 +23,11 @@ class Ataabtrnfatbaa:
         intermediate=None,  # numpy.complex64
         out_a=None, out_b=None
     ):
-        self.a = sanitise_arg("a", sanitiser_name="array_1d_complex")
-        self.b = sanitise_arg("b", sanitiser_name="array_1d_complex")
+        self.a = sanitise_spectra_buffer(a, "a")
+        self.b = sanitise_spectra_buffer(b, "b")
 
-        if a.shape != b.shape:
-            raise ValueError("'a' and 'b' should have the same shape")
+        if a.newest.shape != b.newest.shape:
+            raise ValueError("'a' and 'b' arrays should have the same shape")
 
         self.out_a, self.out_b = self._sanitise_outs(out_a, out_b)
         self.intermediate = self._sanitise_intermediate(intermediate)
@@ -37,18 +38,17 @@ class Ataabtrnfatbaa:
             arctan2=np.arctan2, power=np.power, multiply=np.multiply,
             abs_=np.abs,
             a=self.a, b=self.b,
-            a_real=self.a.real, a_imag=self.a.imag,
             intermediate=self.intermediate,
             out_a=self.out_a, out_b=self.out_b
         ):
             while True:
                 # because numpy.angle doesn't support 'out' argument
-                arctan2(a_imag, a_real, out=out_a)
+                arctan2(a.newest.imag, a.newest.real, out=out_a)
 
                 power(ONE_ROTATED_CONJUGATED, out_a, out=intermediate)
-                multiply(b, intermediate, out=out_b)
+                multiply(b.newest, intermediate, out=out_b)
 
-                abs_(a, out=out_a)
+                abs_(a.newest, out=out_a)
 
                 yield
 
@@ -60,33 +60,32 @@ class Ataabtrnfatbaa:
             (out_b, np.complex64, "out_b", "array_1d_complex")
         ):
             if arr is None:
-                arr = np.empty(self.a.shape, dtype=dtype)
+                arr = np.empty(self.a.newest.shape, dtype=dtype)
             else:
-                sanitise_arg(name, sanitiser_name=sanitiser_name)
+                san(name, sanitiser_name)
 
-                if arr.shape != self.a.shape:
+                if arr.shape != self.a.newest.shape:
                     raise ValueError(
                         f"if provided, {name!r} should have the same shape as "
-                        "'a' and 'b'"
+                        "'a' and 'b' arrays"
                     )
 
             yield arr
 
     def _sanitise_intermediate(self, intermediate):
         if intermediate is None:
-            if self.out_b is self.b:
-                intermediate = np.empty(self.a.shape, dtype=np.complex64)
+            if self.out_b is self.b.newest:
+                intermediate \
+                    = np.empty(self.a.newest.shape, dtype=np.complex64)
             else:
                 intermediate = self.out_b
         else:
-            intermediate = sanitise_arg(
-                "intermediate", sanitiser_name="array_1d_complex"
-            )
+            intermediate = san("intermediate", "array_1d_complex")
 
-            if intermediate.shape != self.a.shape:
+            if intermediate.shape != self.a.newest.shape:
                 raise ValueError(
                     "if provided, 'intermediate' should have the same shape "
-                    "as 'a' and 'b'"
+                    "as 'a' and 'b' arrays"
                 )
 
         return intermediate

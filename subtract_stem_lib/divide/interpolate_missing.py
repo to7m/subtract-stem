@@ -1,11 +1,11 @@
-from ..sanitisation import sanitise_arg
+from .._sanitisation import sanitise_arg as san
 
 
 class InterpolateMissing:
     __slots__ = ["a", "is_safe", "out"]
 
     def __init__(self, a, *, is_safe, out=None):
-        self.a = sanitise_arg("a", sanitiser_name="array_1d_complex")
+        self.a = san("a", "array_1d_complex")
         self.is_safe = self._sanitise_is_safe(is_safe)
         self.out = self._sanitise_out(out)
 
@@ -37,7 +37,7 @@ class InterpolateMissing:
         return iterator()
 
     def _sanitise_is_safe(self, is_safe):
-        sanitise_arg("is_safe")
+        san("is_safe")
 
         if is_safe.shape != self.a.shape:
             raise ValueError("'a' and 'is_safe' should have the same shape")
@@ -48,7 +48,7 @@ class InterpolateMissing:
         if out is None:
             out = np.empty(self.a.shape, dtype=np.complex64)
         else:
-            out = sanitise_arg("out", sanitiser_name="array_1d_complex")
+            out = san("out", "array_1d_complex")
 
             if out.shape != self.a.shape:
                 raise ValueError(

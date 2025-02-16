@@ -1,11 +1,11 @@
 import numpy as np
 
-from ..sanitisation import sanitise_arg
+from .._sanitisation import sanitise_arg as san
 
 
 def sanitise_a_b_out(a, b, out):
     for name in "a", "b":
-        sanitise_arg(name, sanitiser_name="array_1d")
+        san(name, "array_1d")
 
     valid_dtypes = {np.dtype(np.float32), np.dtype(np.complex64)}
     if {np.dtype(np.float32), a.dtype, b.dtype} != valid_dtypes:
@@ -20,7 +20,7 @@ def sanitise_a_b_out(a, b, out):
     if out is None:
         out = np.empty(a.shape, dtype=np.complex64)
     else:
-        sanitise_arg("out", sanitiser_name="array_1d_complex")
+        san("out", "array_1d_complex")
 
         if out.shape != a.shape:
             raise ValueError(

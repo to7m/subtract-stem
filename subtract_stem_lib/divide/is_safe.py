@@ -1,7 +1,7 @@
 import numpy as np
 
 from ..defaults import MAX_ABS_RESULT
-from ..sanitisation import sanitise_arg
+from .._sanitisation import sanitise_arg as san
 
 
 class GenerateIsSafes:
@@ -13,7 +13,7 @@ class GenerateIsSafes:
         intermediate=None,  # numpy.float32
         out=None
     ):
-        self.a = sanitise_arg("a", sanitiser_name="array_1d_complex")
+        self.a = san("a", "array_1d_complex")
         self.max_abs_result = sanitise_arg("max_abs_result")
         self.intermediate, self.out \
             = self._sanitise_intermediate_and_out(intermediate, out)
@@ -45,7 +45,7 @@ class GenerateIsSafes:
             if arr is None:
                 arr = np.empty(self.a.shape, dtype=dtype)
             else:
-                sanitise_arg(name, sanitiser_name=sanitiser_name)
+                san(name, sanitiser_name)
 
                 if arr.shape != self.a.shape:
                     raise ValueError(

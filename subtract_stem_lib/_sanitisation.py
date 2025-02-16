@@ -1,7 +1,7 @@
 import numpy as np
 
-from ._sanitisers import Sanitisers
-from ._sanitisers_pre_buffer import (
+from ._sanitisation_base import Sanitisers
+from ._sanitisation_pre_buffer import (
     sanitise_array,
     sanitisers as prev_sanitisers
 )

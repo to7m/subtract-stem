@@ -1,7 +1,7 @@
 import numpy as np
 
 from ..defaults import MAX_ABS_RESULT
-from ..sanitisation import sanitise_arg
+from .._sanitisation import sanitise_arg as san
 from .unsafe_divide import UnsafeDivider
 from .is_safe import GenerateIsSafes
 from .interpolate_missing import InterpolateMissing
@@ -20,10 +20,9 @@ class SafeDivider:
         intermediate_b=None,  # bool
         out=None
     ):
-        self.a, self.b = a, b
-
         self._unsafe_divider = UnsafeDivider(a, b, out=out)
 
+        self.a, self.b = self._unsafe_divider.a, self._unsafe_divider.b
         self.out = self._unsafe_divider.out
 
         self.intermediate_a, self.intermediate_b \
@@ -65,7 +64,7 @@ class SafeDivider:
             if arr is None:
                 arr = np.empty(self.a.shape, dtype=dtype)
             else:
-                sanitise_arg(name, sanitiser_name=sanitiser_name)
+                san(name, sanitiser_name)
 
                 if arr.shape != self.a.shape:
                     raise ValueError(

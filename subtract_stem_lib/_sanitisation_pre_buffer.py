@@ -2,7 +2,7 @@ from pathlib import Path
 from fractions import Fraction
 import numpy as np
 
-from _sanitisation_base import Sanitisers
+from ._sanitisation_base import Sanitisers
 
 
 def _make_sanitise_array(dimensions=None, dtype=None, allow_empty=False):

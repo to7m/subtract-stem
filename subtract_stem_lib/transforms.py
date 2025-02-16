@@ -1,15 +1,18 @@
 import numpy as np
 
-from .sanitisation import sanitise_arg
+from ._sanitisation import sanitise_arg as san
 from .buffer import Buffer
 from ._sanitise_spectra_buffer import sanitise_spectra_buffer
 
 
+
+"""
+not sure what will be relevant yet
 class GrainsToSpectra:
     __slots__ = ["grain", "out"]
 
     def __init__(self, grain, *, out=None):
-        self.grain = sanitise_arg("grain")
+        self.grain = san("grain")
         self.out = self._sanitise_out(out)
 
     def __iter__(self):
@@ -25,12 +28,10 @@ class GrainsToSpectra:
         if out is None:
             out = np.empty(self.grain.shape, dtype=np.complex64)
         else:
-            out = sanitise_arg("out", sanitiser_name="array_1d_complex")
+            out = san("out", "array_1d_complex")
 
             if len(out) != len(self.grain):
-                raise ValueError(
-                    "'out' should be the same size as 'grain'"
-                )
+                raise ValueError("'out' should be the same size as 'grain'")
 
         return out
 
@@ -39,7 +40,7 @@ class GrainsToSpectraBuffer:
     __slots__ = ["grain", "out"]
 
     def __init__(self, grain, *, out):
-        self.grain = sanitise_arg("grain")
+        self.grain = san("grain")
         self.out = sanitise_spectra_buffer(out, name="out", grain=self.grain)
 
     def __iter__(self):
@@ -168,3 +169,4 @@ class SpectraBufferToGrains:
                 )
 
         return out_complex
+"""

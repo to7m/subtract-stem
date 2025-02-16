@@ -114,3 +114,9 @@ def buffer_from_array_args(
     return buffer_from_constructor(
         constructor, num_of_items=num_of_items, lookbehind=lookbehind
     )
+
+
+def buffer_from_array(array):
+    san("array")
+
+    return QuasiBuffer(_data=array)
