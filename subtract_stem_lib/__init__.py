@@ -1,5 +1,6 @@
 import numpy as np
 
+from .buffer import Buffer
 from .hone_in import hone_in
 from .divide import (
     UnsafeDivider, GenerateIsSafes, InterpolateMissing,
@@ -7,7 +8,6 @@ from .divide import (
 )
 from .io import load_audio, save_audio
 from .audio_grains import AudioToGrains, AudioToHannGrains, AddGrainsToAudio
-from .buffer import Buffer
 from .transforms import (
     GrainsToSpectra, GrainsToSpectraBuffer,
     SpectraToGrains, SpectraBufferToGrains
