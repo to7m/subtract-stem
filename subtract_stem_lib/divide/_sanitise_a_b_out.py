@@ -15,7 +15,7 @@ def sanitise_a_b_out(a, b, out):
         )
 
     if a.shape != b.shape:
-        raise ValueError("'a' and 'b' should have the same shape")
+        raise ValueError("'a' and 'b' should have same shape")
 
     if out is None:
         out = np.empty(a.shape, dtype=np.complex64)
@@ -24,7 +24,7 @@ def sanitise_a_b_out(a, b, out):
 
         if out.shape != a.shape:
             raise ValueError(
-                "'out' should have the same shape as 'a' and 'b'"
+                "'out' should have same shape as 'a' and 'b'"
             )
 
     return a, b, out

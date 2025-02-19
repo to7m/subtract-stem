@@ -33,7 +33,7 @@ class Ataabtrnfatbaa:
         self.intermediate = self._sanitise_intermediate(intermediate)
 
     def __iter__(self):
-        def iterator(
+        def get_iterator(
             ONE_ROTATED_CONJUGATED=ONE_ROTATED_CONJUGATED,
             arctan2=np.arctan2, power=np.power, multiply=np.multiply,
             abs_=np.abs,
@@ -52,7 +52,7 @@ class Ataabtrnfatbaa:
 
                 yield
 
-        return iterator()
+        return get_iterator()
 
     def _sanitise_outs(self, out_a, out_b):
         for arr, dtype, name, sanitiser_name in (

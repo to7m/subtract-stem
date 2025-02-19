@@ -22,7 +22,7 @@ class SafeDivider:
     ):
         self._unsafe_divider = UnsafeDivider(a, b, out=out)
 
-        self.a, self.b = self._unsafe_divider.a, self._unsafe_divider.b
+        self.a, self.b = a, b
         self.out = self._unsafe_divider.out
 
         self.intermediate_a, self.intermediate_b \
@@ -42,19 +42,19 @@ class SafeDivider:
         )
 
     def __iter__(self):
-        def iterator(
-            unsafe_divider_iter=iter(self._unsafe_divider),
-            generate_is_safes_iter=iter(self._generate_is_safes),
-            interpolate_missing_iter=iter(self._interpolate_missing)
+        def get_iterator(
+            iter=zip(
+                self._unsafe_divider,
+                self._generate_is_safes,
+                self._interpolate_missing
+            )
         ):
             while True:
-                next(unsafe_divider_iter)
-                next(generate_is_safes_iter)
-                next(interpolate_missing_iter)
+                next(iter)
 
                 yield
 
-        return iterator()
+        return get_iterator()
 
     def _sanitise_intermediates(self, intermediate_a, intermediate_b):
         for arr, dtype, name, sanitiser_name in (

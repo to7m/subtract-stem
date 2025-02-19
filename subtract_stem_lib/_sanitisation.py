@@ -5,6 +5,7 @@ from ._sanitisation_pre_buffer import (
     sanitise_array,
     sanitisers as prev_sanitisers
 )
+from .buffer import 
 
 
 def sanitise_buffer_data(val, name):

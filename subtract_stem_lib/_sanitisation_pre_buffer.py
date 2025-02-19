@@ -5,7 +5,7 @@ import numpy as np
 from ._sanitisation_base import Sanitisers
 
 
-def _make_sanitise_array(dimensions=None, dtype=None, allow_empty=False):
+def _make_sanitise_array(*, dimensions=None, dtype=None, allow_empty=False):
     def sanitise_array(val, name):
         if type(val) is not np.ndarray:
             raise TypeError(f"{name!r} should be a numpy.ndarray")
@@ -44,7 +44,7 @@ def _sanitise_bool(val, name):
         raise TypeError(f"{name!r} should be a bool")
 
 
-sanitise_error_if_not_mono = sanitise_highest_wins sanitise_subtract \
+sanitise_error_if_not_mono = sanitise_highest_wins = sanitise_subtract \
     = _sanitise_bool
 
 
@@ -58,7 +58,7 @@ def _sanitise_callable(val, name):
 sanitise_constructor = sanitise_scoring_function = _sanitise_callable
 
 
-def _make_sanitise_float(allow_convert=False, range_=None):
+def _make_sanitise_float(*, allow_convert=False, range_=None):
     def sanitise_float(val, name):
         if allow_convert:
             val = float(val)
@@ -94,7 +94,7 @@ def _sanitise_fraction(val, name):
 sanitise_sample_rate = _sanitise_fraction
 
 
-def _make_sanitise_int(allow_convert=False, range_=None):
+def _make_sanitise_int(*, allow_convert=False, range_=None):
     def sanitise_int(val, name):
         if allow_convert:
             val = int(val)

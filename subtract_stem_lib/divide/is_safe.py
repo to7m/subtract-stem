@@ -23,7 +23,7 @@ class GenerateIsSafes:
         a, max_abs_result, intermediate, out \
             = self.a, self.max_abs_result, self.intermediate, self.out
 
-        def iterator(
+        def get_iterator(
             abs_=np.abs, less_equal=np.less_equal,
             a=self.a,
             max_abs_result=self.max_abs_result,
@@ -35,7 +35,7 @@ class GenerateIsSafes:
                 less_equal(intermediate, max_abs_result, out=out)
                 yield
 
-        return iterator()
+        return get_iterator()
 
     def _sanitise_intermediate_and_out(self, intermediate, out):
         for arr, dtype, name, sanitiser_name in (

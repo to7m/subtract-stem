@@ -11,7 +11,7 @@ class InterpolateMissing:
 
     def __iter__(self):
         if self.out is self.a:
-            def iterator(
+            def get_iterator(
                 get_all_is_safe=self.is_safe.all,
                 routine=self._routine
             ):
@@ -21,7 +21,7 @@ class InterpolateMissing:
 
                     yield
         else:
-            def iterator(
+            def get_iterator(
                 a=self.a, out=self.out,
                 get_all_is_safe=self.is_safe.all,
                 routine=self._routine
@@ -34,7 +34,7 @@ class InterpolateMissing:
 
                     yield
 
-        return iterator()
+        return get_iterator()
 
     def _sanitise_is_safe(self, is_safe):
         san("is_safe")
