@@ -33,7 +33,7 @@ sanitise_array_1d_bool = sanitise_is_safe \
     = _make_sanitise_array(dimensions=1, dtype=bool)
 sanitise_array_1d_float = sanitise_audio = sanitise_grain = sanitise_window \
     = _make_sanitise_array(dimensions=1, dtype=np.float32)
-sanitise_array_1d_complex = sanitise_spectrum \
+sanitise_array_1d_complex = sanitise_eq_profile = sanitise_spectrum \
     = _make_sanitise_array(dimensions=1, dtype=np.complex64)
 
 

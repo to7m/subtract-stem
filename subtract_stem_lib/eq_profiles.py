@@ -378,3 +378,32 @@ class SpectraBuffersToEqProfiles:
                 **self._kwargs_for_cumsum_slots[cumsum_i],
                 is_initialisation=False
             )
+
+
+class ApplyEqProfilesToSpectraBufferOldest:
+    __slots__ = ["eq_profile", "spectra_buffer", "out"]
+
+    def __init__(self, eq_profile, spectra_buffer, *, out=None):
+        self.eq_profile = san("eq_profile")
+        self.spectra_buffer = sanitise_spectra_buffer(
+            spectra_buffer, name="spectra_buffer",
+            reference_shape=eq_profile.shape,
+            reference_name_quoted="'eq_profile'"
+        )
+        self.out = sanitise_spectra_buffer(
+            out, name="out",
+            reference_shape=eq_profile.shape,
+            reference_name_quoted="'eq_profile' and 'spectra_buffer' arrays"
+        )
+
+    def __iter__(self):
+        def get_iterator(
+            multiply=np.multiply,
+            spectra_buffer=self.spectra_buffer,
+            eq_profile=self.eq_profile,
+            out=self.out
+        ):
+            while True:
+                multiply(spectra_buffer.oldest, eq_profile, out=out.oldest)
+
+                yield
