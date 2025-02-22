@@ -11,8 +11,10 @@ from .divide import (
 from .io import load_audio, save_audio
 from .audio_grains import AudioToGrains, AudioToHannGrains, AddGrainsToAudio
 from .transforms import (
-    GrainsToSpectra, GrainsToSpectraBuffer,
-    SpectraToGrains, SpectraBufferToGrains
+    GrainsToSpectraBuffer, SpectraBufferOldestToComplexGrains
+)
+from .eq_profiles import (
+    SpectraBuffersToEqProfiles, ApplyEqProfilesToSpectraBufferOldest
 )
 
 
@@ -22,8 +24,6 @@ np.seterr(all="raise", divide="ignore", invalid="ignore")
 
 
 """ old:
-from .spectra import GenerateSpectra, GenerateStemAndMixSpectra
-from .eq_profile import GenerateSingleEqProfile, GenerateRunningEqProfile
 from .find_delay_stem_s import find_delay_stem_s
 from .stem_in_mix import (
     GenerateSingleStemInMix, GenerateRunningStemInMix
