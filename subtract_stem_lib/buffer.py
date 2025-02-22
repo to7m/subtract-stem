@@ -4,8 +4,6 @@ from ._pre_buffer_sanitisers import sanitise_arg as san
 
 
 class Buffer:
-    __slots__ = ["_data", "num_of_items", "lookbehind", "_curr_i"]
-
     def __init__(self):
         raise RuntimeError(
             "Buffer should not have instances; only its subclasses should"
@@ -13,7 +11,7 @@ class Buffer:
 
 
 class RealBuffer(Buffer):
-    __slots__ = []
+    __slots__ = ["_data", "_curr_i", "num_of_items", "lookbehind"]
 
     def __init__(self, *, _data):
         self._data = san("_data", "real_buffer_data")
@@ -24,21 +22,21 @@ class RealBuffer(Buffer):
         self._curr_i = 0
 
     @property
-    def newest(self):
-        return self._data[self._curr_i]
-
-    @property
     def oldest(self):
         data = self._data
 
         return data[(self._curr_i + 1) % len(data)]
 
     @property
-    def newest_and_oldest(self):
+    def newest(self):
+        return self._data[self._curr_i]
+
+    @property
+    def oldest_and_newest(self):
         data = self._data
         curr_i = self._curr_i
 
-        return data[curr_i], data[(curr_i + 1) % len(data)]
+        return data[(curr_i + 1) % len(data)], data[curr_i]
 
     def increment_and_get_newest(self):
         data = self._data
@@ -50,26 +48,15 @@ class RealBuffer(Buffer):
 
 
 class QuasiBuffer:
-    __slots__ = []
+    __slots__ = ["oldest", "newest", "oldest_and_newest"]
 
     def __init__(self, *, _data):
-        self._data = sanitise_arg("_data", sanitiser_name="quasi_buffer_data")
+        self.oldest = self.newest \
+            = sanitise_arg("_data", sanitiser_name="quasi_buffer_data")
+        self.oldest_and_newest = self.oldest, self.newest
 
-        self.num_of_items = 1
-        self.lookbehind = 0
-
-        self._curr_i = 0
-
-    @property
-    def newest(self):
-        return self._data
-
-    oldest, increment_and_get_newest = newest
-
-    @property
-    def newest_and_oldest(self):
-        data = self._data
-        return data, data
+    def increment_and_get_newest(self):
+        return self.newest
 
 
 def _buffer_from_data(*, _data):
