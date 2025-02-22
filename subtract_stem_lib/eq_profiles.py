@@ -407,3 +407,5 @@ class ApplyEqProfilesToSpectraBufferOldest:
                 multiply(spectra_buffer.oldest, eq_profile, out=out.oldest)
 
                 yield
+
+        return get_iterator()
