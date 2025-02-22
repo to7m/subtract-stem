@@ -212,7 +212,14 @@ class _IterableForCumsumSlot:
 
 class SpectraBuffersToEqProfiles:
     __slots__ = [
-        "_initialisation_iterables", "_main_iterables"
+        "_abs_stem_spectra_cumsum", "_rotated_mix_spectra_cumsum",
+        "_kwargs_for_cumsum_slots",
+        "_initialisation_iterables", "_main_iterables",
+        "stem_spectra_buffer", "mix_spectra_buffer",
+        "lookbehind", "max_abs_result", "ret_reciprocal_eq",
+        "intermediate_a", "intermediate_b",
+        "out",
+        "cumsum_len"
     ]
 
     def __init__(
