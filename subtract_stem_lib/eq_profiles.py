@@ -254,7 +254,7 @@ class SpectraBuffersToEqProfiles:
         self._main_iterables = list(self._get_main_iterables())
 
     def __iter__(self):
-        def iterator(
+        def get_iterator(
             initialisation_iterators
                 =[iter(x) for x in self._initialisation_iterables],
             main_iterators=[iter(x) for x in self._main_iterables]
@@ -270,7 +270,7 @@ class SpectraBuffersToEqProfiles:
 
                 yield
 
-        return iterator()
+        return get_iterator()
 
     def _sanitise_spectra_buffers(
         self, stem_spectra_buffer, mix_spectra_buffer
