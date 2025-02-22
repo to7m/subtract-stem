@@ -3,7 +3,7 @@ import numpy as np
 import subtract_stem_lib as ssl
 
 
-def _test_grains(
+def _test_audio_grains(
     *,
     audio_len=10_000,
     start_i=-3000, interval_len=111, num_of_iterations=150,
