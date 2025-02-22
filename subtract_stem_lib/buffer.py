@@ -48,12 +48,17 @@ class RealBuffer(Buffer):
 
 
 class QuasiBuffer:
-    __slots__ = ["oldest", "newest", "oldest_and_newest"]
+    __slots__ = [
+        "num_of_items", "lookbehind", "oldest", "newest", "oldest_and_newest"
+    ]
 
     def __init__(self, *, _data):
         self.oldest = self.newest \
             = sanitise_arg("_data", sanitiser_name="quasi_buffer_data")
         self.oldest_and_newest = self.oldest, self.newest
+
+        self.num_of_items = 1
+        self.lookbehind = 0
 
     def increment_and_get_newest(self):
         return self.newest
