@@ -13,7 +13,7 @@ class GrainsToSpectraBuffer:
         self.out = sanitise_spectra_buffer(out, name="out", grain=grain)
 
     def __iter__(self):
-        if self.out.num_of_items = 1:
+        if self.out.num_of_items == 1:
             def get_iterator(
                 fft=np.fft.fft,
                 grain=self.grain, out=self.out.newest

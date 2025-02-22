@@ -23,11 +23,13 @@ class Ataabtrnfatbaa:
         intermediate=None,  # numpy.complex64
         out_a=None, out_b=None
     ):
-        self.a = sanitise_spectra_buffer(a, "a")
-        self.b = sanitise_spectra_buffer(b, "b")
+        self.a = sanitise_spectra_buffer(a, name="a")
+        self.b = sanitise_spectra_buffer(b, name="b")
 
-        if a.newest.shape != b.newest.shape:
-            raise ValueError("'a' and 'b' arrays should have the same shape")
+        if self.a.newest.shape != self.b.newest.shape:
+            raise ValueError(
+                "'a' arrays and 'b' arrays should have the same shape"
+            )
 
         self.out_a, self.out_b = self._sanitise_outs(out_a, out_b)
         self.intermediate = self._sanitise_intermediate(intermediate)

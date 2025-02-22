@@ -26,7 +26,7 @@ def sanitise_spectra_buffer(
         raise TypeError(f"{name!r} arrays should have dtype numpy.complex64")
 
     if reference_shape is None:
-         if len(spectra_buffer.newest.shape) != 1:
+        if len(spectra_buffer.newest.shape) != 1:
             raise ValueError(f"{name!r} arrays should be 1-D")
 
         if len(spectra_buffer.newest) == 0:

@@ -1,6 +1,6 @@
 import numpy as np
 
-from ._pre_buffer_sanitisers import sanitise_arg as san
+from ._sanitisation import sanitise_arg as san
 
 
 class Buffer:
@@ -53,8 +53,7 @@ class QuasiBuffer:
     ]
 
     def __init__(self, *, _data):
-        self.oldest = self.newest \
-            = sanitise_arg("_data", sanitiser_name="quasi_buffer_data")
+        self.oldest = self.newest = san("_data", "quasi_buffer_data")
         self.oldest_and_newest = self.oldest, self.newest
 
         self.num_of_items = 1
@@ -64,19 +63,19 @@ class QuasiBuffer:
         return self.newest
 
 
-def _buffer_from_data(*, _data):
-    san("_data", "buffer_data")
+def _buffer_from_data(data):
+    san("data", "buffer_data")
 
-    if len(_data) == 1:
-        return QuasiBuffer(_data=_data[0])
+    if len(data) == 1:
+        return QuasiBuffer(_data=data[0])
     else:
-        return RealBuffer(_data=_data)
+        return RealBuffer(_data=data)
 
 
 def buffer_from_constructor(
     constructor, *, num_of_items=None, lookbehind=None
 ):
-    sanitise_arg("constructor")
+    san("constructor")
 
     if num_of_items is None:
         if lookbehind is None:
@@ -84,10 +83,10 @@ def buffer_from_constructor(
                 "one of 'num_of_items' or 'lookbehind' should be provided"
             )
         else:
-            num_of_items = sanitise_arg("lookbehind") + 1
+            num_of_items = san("lookbehind") + 1
     else:
         if lookbehind is None:
-            sanitise_arg("num_of_items")
+            san("num_of_items")
         else:
             raise TypeError(
                 "only one of 'num_of_items' or 'lookbehind' should be "

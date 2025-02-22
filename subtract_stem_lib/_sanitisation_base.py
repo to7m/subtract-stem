@@ -32,7 +32,7 @@ class Sanitisers:
             inst._data.update(prev_sanitisers._data)
 
         for key, val in inspect.stack()[1].frame.f_globals.items():
-            if not key.starts_with("sanitise_"):
+            if not key.startswith("sanitise_"):
                 continue
 
             name = key[9:]
@@ -47,7 +47,7 @@ class Sanitisers:
 
             inst._data[name] = sanitiser
 
-            return inst
+        return inst
 
     def sanitise_arg(self, name, sanitiser_name=None):
         f_locals = inspect.stack()[1].frame.f_locals
@@ -60,11 +60,14 @@ class Sanitisers:
         else:
             raise KeyError(f"{name!r} not found in locals of calling frame")
 
-        if sanitiser_name is not None and type(sanitiser_name) is not str:
-            raise TypeError("if provided, sanitiser_name should be a str")
+        if sanitiser_name is None:
+            sanitiser_name = name
+        else:
+            if type(sanitiser_name) is not str:
+                raise TypeError("if provided, sanitiser_name should be a str")
 
-        if sanitiser_name not in self._data:
-            raise KeyError(f"no sanitiser for {sanitiser_name!r} found")
+            if sanitiser_name not in self._data:
+                raise KeyError(f"no sanitiser for {sanitiser_name!r} found")
 
         return self._data[sanitiser_name](val, name)
 
@@ -85,4 +88,4 @@ class Sanitisers:
             if name not in self._data:
                 raise KeyError(f"no sanitiser for {name!r} found")
 
-            return self._data[name](val)
+            yield self._data[name](val)

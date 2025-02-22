@@ -14,7 +14,7 @@ class GenerateIsSafes:
         out=None
     ):
         self.a = san("a", "array_1d_complex")
-        self.max_abs_result = sanitise_arg("max_abs_result")
+        self.max_abs_result = san("max_abs_result")
         self.intermediate, self.out \
             = self._sanitise_intermediate_and_out(intermediate, out)
 

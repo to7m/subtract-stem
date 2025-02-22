@@ -489,7 +489,7 @@ class AddGrainsToAudio:
 
                     yield
 
-        return iterator()
+        return get_iterator()
 
     # unoptimised edge case
     def _get_island_iterator(self, grain_range):

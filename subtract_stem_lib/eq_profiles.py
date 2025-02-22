@@ -19,7 +19,7 @@ def _rotator_for_cumsum_slot_from_args(
 
 
 class _CompleteCumsumEntryForCumsumSlot:
-    __slots__ = ["prev_cumsum_entry, curr_cumsum_entry", "is_dummy"]
+    __slots__ = ["prev_cumsum_entry", "curr_cumsum_entry", "is_dummy"]
 
     def __init__(self, *, prev_cumsum_entry, curr_cumsum_entry):
         self.prev_cumsum_entry = prev_cumsum_entry
@@ -110,11 +110,11 @@ class _GetMovingSumForCumsumSlot:
 
     @classmethod
     def from_args(cls, *, cumsum, cumsum_i, probable_out):
-        if cumsum_i = len(cumsum) - 2:
+        if cumsum_i == len(cumsum) - 2:
             entry_before_moving_sum_start = last_in_prev_cumsum = None
             out = cumsum[-2]
         else:
-            if cumsum_i = len(cumsum) - 1:
+            if cumsum_i == len(cumsum) - 1:
                 entry_before_moving_sum_start = cumsum[0]
                 last_in_prev_cumsum = None
             else:
@@ -138,7 +138,7 @@ def _safe_divider_for_cumsum_slot_from_args(
     max_abs_result, ret_reciprocal_eq,
     bool_arr
 ):
-    if cumsum_i = len(cumsum_a) - 2:
+    if cumsum_i == len(cumsum_a) - 2:
         a, b = cumsum_a[-2], cumsum_b[-2]
     else:
         a, b = probable_a, probable_b

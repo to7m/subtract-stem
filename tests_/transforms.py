@@ -1,8 +1,7 @@
 import numpy as np
 
 
-from subtract_stem_lib import (
-    GrainsToSpectra, GrainsToSpectraBuffer,
+from subtract_stem_lib import GrainsToSpectraBuffer, GrainsToSpectraBuffer,
     SpectraToGrains, SpectraBufferToGrains
 )
 
