@@ -1,6 +1,8 @@
 import numpy as np
 
-from .buffer import Buffer
+from .buffer import (
+    Buffer, buffer_from_constructor, buffer_from_array_args, buffer_from_array
+)
 from .hone_in import hone_in
 from .divide import (
     UnsafeDivider, GenerateIsSafes, InterpolateMissing,

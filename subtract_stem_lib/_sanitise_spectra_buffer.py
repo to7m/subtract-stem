@@ -1,10 +1,17 @@
 import numpy as np
 
-from .buffer import Buffer, buffer_from_array
+from .buffer import Buffer, buffer_from_array_args, buffer_from_array
 
 
 def sanitise_spectra_buffer(spectra_buffer, *, name, grain=None):
-    if type(spectra_buffer) is np.ndarray:
+    if spectra_buffer is None:
+        if grain is None:
+            raise TypeError(f"{name!r} not provided")
+        else:
+            spectra_buffer = buffer_from_array_args(
+                grain.shape, dtype=np.complex64, num_of_items=1
+            )
+    elif type(spectra_buffer) is np.ndarray:
         spectra_buffer = buffer_from_array(spectra_buffer)
     elif not isinstance(spectra_buffer, Buffer):
         raise TypeError(

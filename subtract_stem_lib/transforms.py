@@ -1,8 +1,17 @@
 import numpy as np
 
 from ._sanitisation import sanitise_arg as san
-from .buffer import Buffer
+from .buffer import Buffer, buffer_from_array_args
 from ._sanitise_spectra_buffer import sanitise_spectra_buffer
+
+
+class GrainsToSpectraBuffer:
+    __slots__ = ["grain", "out"]
+
+    def __init__(self, grain, *, out=None):
+        self.grain = san("grain")
+        self.out = sanitise_spectra_buffer(out, name="out", grain=grain)
+
 
 
 
