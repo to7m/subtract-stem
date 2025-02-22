@@ -161,7 +161,7 @@ class _IterableForCumsumSlot:
         "complete_cumsum_a_entry", "complete_cumsum_b_entry",
         "get_moving_sum_a", "get_moving_sum_b",
         "safe_divider",
-        "is_intitialisation"
+        "is_initialisation"
     ]
 
     def __init__(
