@@ -47,7 +47,7 @@ class RealBuffer(Buffer):
         return data[curr_i]
 
 
-class QuasiBuffer:
+class QuasiBuffer(Buffer):
     __slots__ = [
         "num_of_items", "lookbehind", "oldest", "newest", "oldest_and_newest"
     ]

@@ -10,7 +10,10 @@ class GrainsToSpectraBuffer:
 
     def __init__(self, grain, *, out=None):
         self.grain = san("grain")
-        self.out = sanitise_spectra_buffer(out, name="out", grain=grain)
+        self.out = sanitise_spectra_buffer(
+            out, name="out",
+            reference_shape=grain.shape, reference_name_quoted="'grain'"
+        )
 
     def __iter__(self):
         if self.out.num_of_items == 1:
