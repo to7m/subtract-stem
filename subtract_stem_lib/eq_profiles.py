@@ -3,18 +3,22 @@ import numpy as np
 from .defaults import MAX_ABS_RESULT
 from .buffer import Buffer
 from ._sanitisation import sanitise_arg as san
-from ._sanitise_spectra_buffer import sanitise_spectra_buffer
+from ._sanitise_spectra_buffer import (
+    sanitise_spectra_buffer, sanitise_stem_mix_spectra_buffers
+)
+from ._sanitise_unique_arrays_of_shape import sanitise_unique_arrays_of_shape
 from .divide import SafeDivider, Ataabtrnfatbaa
 
 
 def _rotator_for_cumsum_slot_from_args(
     *,
-    spectra_buffer_a, spectra_buffer_b,
-    cumsum_a, cumsum_b, cumsum_i
+    stem_spectra_buffer, mix_spectra_buffer,
+    abs_stem_spectra_cumsum, rotated_mix_spectra_cumsum, cumsum_i
 ):
     return Ataabtrnfatbaa(
-        spectra_buffer_a, spectra_buffer_b,
-        out_a=cumsum_a[cumsum_i], out_b=cumsum_b[cumsum_i]
+        stem_spectra_buffer, mix_spectra_buffer,
+        out_a=abs_stem_spectra_cumsum[cumsum_i],
+        out_b=rotated_mix_spectra_cumsum[cumsum_i]
     )
 
 
@@ -133,15 +137,15 @@ class _GetMovingSumForCumsumSlot:
 
 def _divider_for_cumsum_slot_from_args(
     *,
-    cumsum_a, cumsum_b, cumsum_i,
-    probable_a, probable_b,
+    abs_stem_spectra_cumsum, rotated_mix_spectra_cumsum, cumsum_i,
+    probable_abs_stem_spectra_sum, probable_rotated_mix_spectra_sum,
     max_abs_result, ret_reciprocal_eq,
     bool_arr
 ):
-    if cumsum_i == len(cumsum_a) - 2:
-        a, b = cumsum_a[-2], cumsum_b[-2]
+    if cumsum_i == len(abs_stem_spectra_cumsum) - 2:
+        a, b = rotated_mix_spectra_cumsum[-2], abs_stem_spectra_cumsum[-2]
     else:
-        a, b = probable_a, probable_b
+        a, b = probable_rotated_mix_spectra_sum, probable_abs_stem_spectra_sum
 
     if ret_reciprocal_eq:
         a, b = b, a
@@ -149,8 +153,8 @@ def _divider_for_cumsum_slot_from_args(
     return SafeDivider(
         a, b,
         max_abs_result=max_abs_result,
-        intermediate_a=probable_a, intermediate_b=bool_arr,
-        out=probable_b
+        intermediate_a=probable_abs_stem_spectra_sum, intermediate_b=bool_arr,
+        out=probable_rotated_mix_spectra_sum
     )
 
 
@@ -158,8 +162,10 @@ class _IterableForCumsumSlot:
     __slots__ = [
         "_sub_iterables",
         "rotator",
-        "complete_cumsum_a_entry", "complete_cumsum_b_entry",
-        "get_moving_sum_a", "get_moving_sum_b",
+        "complete_abs_stem_spectra_cumsum_entry",
+        "complete_rotated_mix_spectra_cumsum_entry",
+        "get_abs_stem_spectra_moving_sum",
+        "get_rotated_mix_spectra_moving_sum",
         "divider",
         "is_initialisation"
     ]
@@ -167,16 +173,21 @@ class _IterableForCumsumSlot:
     def __init__(
         self, *,
         rotator,
-        complete_cumsum_a_entry, complete_cumsum_b_entry,
-        get_moving_sum_a, get_moving_sum_b,
+        complete_abs_stem_spectra_cumsum_entry,
+        complex_rotated_mix_spectra_cumsum_entry,
+        get_abs_stem_spectra_moving_sum,
+        get_rotated_mix_spectra_moving_sum,
         divider,
         is_initialisation
     ):
         self.rotator = rotator
-        self.complete_cumsum_a_entry = complete_cumsum_a_entry
-        self.complete_cumsum_b_entry = complete_cumsum_b_entry
-        self.get_moving_sum_a = get_moving_sum_a
-        self.get_moving_sum_b = get_moving_sum_b
+        self.complete_abs_stem_spectra_cumsum_entry \
+            = complete_abs_stem_spectra_cumsum_entry
+        self.complex_rotated_mix_spectra_cumsum_entry \
+            = complex_rotated_mix_spectra_cumsum_entry
+        self.get_abs_stem_spectra_moving_sum = get_abs_stem_spectra_moving_sum
+        self.get_rotated_mix_spectra_moving_sum \
+            = get_rotated_mix_spectra_moving_sum
         self.divider = divider
         self.is_initialisation = is_initialisation
 
@@ -196,67 +207,84 @@ class _IterableForCumsumSlot:
     def _get_subiterables(self):
         yield self.rotator
 
-        if not self.complete_cumsum_a_entry.is_dummy:
-            yield self.complete_cumsum_a_entry
-            yield self.complete_cumsum_b_entry
+        if not self.complete_abs_stem_spectra_cumsum_entry.is_dummy:
+            yield self.complete_abs_stem_spectra_cumsum_entry
+            yield self.complete_rotated_mix_spectra_cumsum_entry
 
         if self.is_initialisation:
             return
 
-        if not self.get_moving_sum_a.is_dummy:
-            yield self.get_moving_sum_a
-            yield self.get_moving_sum_b
+        if not self.get_abs_stem_spectra_moving_sum.is_dummy:
+            yield self.get_abs_stem_spectra_moving_sum
+            yield self.get_rotated_mix_spectra_moving_sum
 
         yield self.divider
 
 
+def _sanitise_intermediates_and_out(
+    intermediate_a, intermediate_b, out, *, shape
+):
+    yield from sanitise_unique_arrays_of_shape(
+        array_infos=[
+            (intermediate_a, "intermediate_a", "float"),
+            (intermediate_b, "intermediate_b", "bool"),
+            (out, "out", "complex")
+        ],
+        reference_shape=shape,
+        reference_name
+            ="'stem_spectra_buffer' arrays and 'mix_spectra_buffer' arrays"
+    )
+
+
 class SpectraBuffersToEqProfile:
     __slots__ = [
-        "_rotator", "_divider",
-        "stem_spectra_buffer", "mix_spectra_buffer"
+        "_abs_stem_spectra_sum", "_rotated_mix_spectra_sum",
+        "_initial_rotator", "_main_rotator", "_divider",
+        "stem_spectra_buffer", "mix_spectra_buffer",
+        "max_abs_result", "ret_reciprocal_eq",
         "intermediate_a", "intermediate_b",
-        "intermediate_c", "intermediate_d",
         "out"
     ]
 
     def __init__(
         self, stem_spectra_buffer, mix_spectra_buffer, *,
+        max_abs_result=MAX_ABS_RESULT, ret_reciprocal_eq=False,
         intermediate_a=None,  # numpy.float32
-        intermediate_b=None,  # numpy.complex64
-        intermediate_c=None,  # numpy.float32
-        intermediate_d=None,  # numpy.complex64
+        intermediate_b=None,  # bool
         out=None
     ):
         self.stem_spectra_buffer, self.mix_spectra_buffer \
-            = self._sanitise_spectra_buffers(
+            = sanitise_stem_mix_spectra_buffers(
                   stem_spectra_buffer, mix_spectra_buffer
               )
-        (
-            self.intermediate_a, self.intermediate_b,
-            self.intermediate_c, self.intermediate_d
-        ) = self._sanitise_intermediates_and_out(
-            intermediate_a, intermediate_b, intermediate_c, intermediate_d,
-            out
-        )
+        self.max_abs_result = san("max_abs_result")
+        self.ret_reciprocal_eq = san("ret_reciprocal_eq")
+        self.intermediate_a, self.intermediate_b, self.out \
+            = _sanitise_intermediates_and_out(
+                  intermediate_a, intermediate_b, out,
+                  shape=self.stem_spectra_buffer.newest.shape
+              )
 
-        self._rotator = +...
-        self._divider = +...
+        self._abs_stem_spectra_sum, self._rotated_mix_spectra_sum \
+            = self._get_sums()
+        self._initial_rotator, self._main_rotator = self._get_rotators()
+        self._divider = self._get_divider()
 
     def __iter__(self):
         def get_iterator(
-            rotator=self._rotator,
+            initial_rotator=self._initial_rotator,
+            main_rotator=self._main_rotator,
             abs_stem_spectrum=self.intermediate_a,
-            rotated_mix_spectrum=self.intermediate_b,
-            abs_stem_spectra_sum=self.intermediate_c,
-            rotated_mix_spectra_sum=self.intermediate_d,
-            abs_stem_spectra_sum_fill=self.intermediate_c.fill,
-            rotated_mix_spectra_sum_fill=self.intermediate_d.fill,
+            rotated_mix_spectrum=self.out,
+            abs_stem_spectra_sum=self._abs_stem_spectra_sum,
+            rotated_mix_spectra_sum=self._rotated_mix_spectra_sum,
         ):
-            abs_stem_spectra_sum_fill(0)
-            rotated_mix_spectra_sum_fill(0)
+            next(initial_rotator)
+
+            yield
 
             while True:
-                next(rotator)
+                next(main_rotator)
 
                 abs_stem_spectra_sum += abs_stem_spectrum
                 rotated_mix_spectra_sum += rotated_mix_spectrum
@@ -265,13 +293,37 @@ class SpectraBuffersToEqProfile:
 
         return get_iterator()
 
-    def _sanitise_spectra_buffers(self):
-        +...
+    def _get_sums(self):
+        for dtype in np.float32, np.complex64:
+            yield np.empty(self.out.shape, dtype=dtype)
 
-    def _sanitise_intermediates_and_out(self):
-        +...
+    def _get_rotators(self):
+        yield Ataabtrnfatbaa(
+            self.stem_spectra_buffer, self.mix_spectra_buffer,
+            out_a=self._abs_stem_spectra_sum,
+            out_b=self._rotated_mix_spectra_sum
+        )
 
-    def calculate_eq_profile(self):
+        yield Ataabtrnfatbaa(
+            self.stem_spectra_buffer, self.mix_spectra_buffer,
+            out_a=self.intermediate_a, out_b=self.out
+        )
+
+    def _get_divider(self):
+        a, b = self._rotated_mix_spectra_sum, self._abs_stem_spectra_sum
+
+        if self.ret_reciprocal_eq:
+            a, b = b, a
+
+        return SafeDivider(
+            a, b,
+            max_abs_result=self.max_abs_result,
+            intermediate_a=self.intermediate_a,
+            intermediate_b=self.intermediate_b,
+            out=self.out
+        )
+
+    def get_eq_profile(self):
         next(iter(self._divider))
 
         return self.out
@@ -297,15 +349,16 @@ class SpectraBuffersToEqProfiles:
         out=None
     ):
         self.stem_spectra_buffer, self.mix_spectra_buffer \
-            = self._sanitise_spectra_buffers(
+            = sanitise_stem_mix_spectra_buffers(
                   stem_spectra_buffer, mix_spectra_buffer
               )
         self.lookbehind = san("lookbehind")
         self.max_abs_result = san("max_abs_result")
         self.ret_reciprocal_eq = san("ret_reciprocal_eq")
         self.intermediate_a, self.intermediate_b, self.out \
-            = self._sanitise_intermediates_and_out(
-                  intermediate_a, intermediate_b, out
+            = _sanitise_intermediates_and_out(
+                  intermediate_a, intermediate_b, out,
+                  shape=self.stem_spectra_buffer.newest.shape
               )
 
         self.cumsum_len = lookbehind + 2
@@ -339,48 +392,6 @@ class SpectraBuffersToEqProfiles:
 
         return get_iterator()
 
-    def _sanitise_spectra_buffers(
-        self, stem_spectra_buffer, mix_spectra_buffer
-    ):
-        stem_spectra_buffer = sanitise_spectra_buffer(
-            stem_spectra_buffer, name="stem_spectra_buffer"
-        )
-        mix_spectra_buffer = sanitise_spectra_buffer(
-            mix_spectra_buffer, name="mix_spectra_buffer"
-        )
-
-        if len(stem_spectra_buffer.newest) != len(mix_spectra_buffer.newest):
-            raise ValueError(
-                "'stem_spectra_buffer' arrays and 'mix_spectra_buffer' "
-                "arrays should have the same shape"
-            )
-
-        return stem_spectra_buffer, mix_spectra_buffer
-
-    def _sanitise_intermediates_and_out(
-        self, intermediate_a, intermediate_b, out
-    ):
-        for arr, dtype, name, sanitiser_name in (
-            (intermediate_a, np.float32, "intermediate_a", "array_1d_float"),
-            (intermediate_b, bool, "intermediate_b", "array_1d_bool"),
-            (out, np.complex64, "out", "array_1d_complex")
-        ):
-            if arr is None:
-                arr = np.empty(
-                    self.stem_spectra_buffer.newest.shape, dtype=dtype
-                )
-            else:
-                san(name, sanitiser_name)
-
-                if arr.shape != self.stem_spectra_buffer.newest.shape:
-                    raise ValueError(
-                        f"{name!r} should have same shape as "
-                        "'stem_spectra_buffer' arrays and "
-                        "'mix_spectra_buffer' arrays"
-                    )
-
-            yield arr
-
     def _get_cumsums(self):
         cumsum_shape = self.cumsum_len, *self.out.shape
 
@@ -391,38 +402,42 @@ class SpectraBuffersToEqProfiles:
         for cumsum_i in range(self.cumsum_len):
             yield {
                 "rotator": _rotator_for_cumsum_slot_from_args(
-                    spectra_buffer_a=self.stem_spectra_buffer,
-                    spectra_buffer_b=self.mix_spectra_buffer,
-                    cumsum_a=self._abs_stem_spectra_cumsum,
-                    cumsum_b=self._rotated_mix_spectra_cumsum,
+                    stem_spectra_buffer=self.stem_spectra_buffer,
+                    mix_spectra_buffer=self.mix_spectra_buffer,
+                    abs_stem_spectra_cumsum=self._abs_stem_spectra_cumsum,
+                    rotated_mix_spectra_cumsum
+                        =self._rotated_mix_spectra_cumsum,
                     cumsum_i=cumsum_i
                 ),
-                "complete_cumsum_a_entry":
+                "complete_abs_stem_spectra_cumsum_entry":
                     _CompleteCumsumEntryForCumsumSlot.from_args(
                         cumsum=self._abs_stem_spectra_cumsum,
                         cumsum_i=cumsum_i
                     ),
-                "complete_cumsum_b_entry":
+                "complete_rotated_mix_spectra_cumsum_entry":
                     _CompleteCumsumEntryForCumsumSlot.from_args(
                         cumsum=self._rotated_mix_spectra_cumsum,
                         cumsum_i=cumsum_i
                     ),
-                "get_moving_sum_a": _GetMovingSumForCumsumSlot.from_args(
-                    cumsum=self._abs_stem_spectra_cumsum,
-                    cumsum_i=cumsum_i,
-                    probable_out=self._intermediate_a
-                ),
-                "get_moving_sum_b": _GetMovingSumForCumsumSlot.from_args(
-                    cumsum=self._rotated_mix_spectra_cumsum,
-                    cumsum_i=cumsum_i,
-                    probable_out=self.out
-                ),
+                "get_abs_stem_spectra_moving_sum":
+                    _GetMovingSumForCumsumSlot.from_args(
+                        cumsum=self._abs_stem_spectra_cumsum,
+                        cumsum_i=cumsum_i,
+                        probable_out=self._intermediate_a
+                    ),
+                "get_rotated_mix_spectra_moving_sum":
+                    _GetMovingSumForCumsumSlot.from_args(
+                        cumsum=self._rotated_mix_spectra_cumsum,
+                        cumsum_i=cumsum_i,
+                        probable_out=self.out
+                    ),
                 "divider": _divider_for_cumsum_slot_from_args(
-                    cumsum_a=self._abs_stem_spectra_cumsum,
-                    cumsum_b=self._rotated_mix_spectra_cumsum,
+                    abs_stem_spectra_cumsum=self._abs_stem_spectra_cumsum,
+                    rotated_mix_spectra_cumsum
+                        =self._rotated_mix_spectra_cumsum,
                     cumsum_i=cumsum_i,
-                    probable_a=self.intermediate_a,
-                    probable_b=self.out,
+                    probable_abs_stem_spectra_sum=self.intermediate_a,
+                    probable_rotated_mix_spectra_sum=self.out,
                     max_abs_result=self.max_abs_result,
                     ret_reciprocal_eq=self.ret_reciprocal_eq,
                     bool_arr=self.intermediate_b

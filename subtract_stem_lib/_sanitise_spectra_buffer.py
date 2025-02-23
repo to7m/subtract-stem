@@ -39,3 +39,22 @@ def sanitise_spectra_buffer(
             )
 
     return spectra_buffer
+
+
+def sanitise_stem_mix_spectra_buffers(
+    stem_spectra_buffer, mix_spectra_buffer
+):
+    stem_spectra_buffer = sanitise_spectra_buffer(
+        stem_spectra_buffer, name="stem_spectra_buffer"
+    )
+    mix_spectra_buffer = sanitise_spectra_buffer(
+        mix_spectra_buffer, name="mix_spectra_buffer"
+    )
+
+    if len(stem_spectra_buffer.newest) != len(mix_spectra_buffer.newest):
+        raise ValueError(
+            "'stem_spectra_buffer' arrays and 'mix_spectra_buffer' arrays "
+            "should have the same shape"
+        )
+
+    return stem_spectra_buffer, mix_spectra_buffer
