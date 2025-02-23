@@ -323,10 +323,8 @@ class SpectraBuffersToEqProfile:
             out=self.out
         )
 
-    def get_eq_profile(self):
+    def calculate_eq_profile(self):
         next(iter(self._divider))
-
-        return self.out
 
 
 class SpectraBuffersToEqProfiles:
