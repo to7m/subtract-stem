@@ -74,7 +74,7 @@ class _GetMovingSumForCumsumSlot:
     ):
         self.curr_cumsum_entry = curr_cumsum_entry
         self.entry_before_moving_sum_start = entry_before_moving_sum_start
-        self.last_in_prev_cumsum = last_in_prev_sumsum
+        self.last_in_prev_cumsum = last_in_prev_cumsum
         self.out = out
 
         self.is_dummy = entry_before_moving_sum_start is None
@@ -91,10 +91,13 @@ class _GetMovingSumForCumsumSlot:
                     =self.entry_before_moving_sum_start,
                 out=self.out
             ):
-                subtract(
-                    curr_cumsum_entry, entry_before_moving_sum_start,
-                    out=out
-                )
+                while True:
+                    subtract(
+                        curr_cumsum_entry, entry_before_moving_sum_start,
+                        out=out
+                    )
+
+                    yield
         else:
             def get_iterator(
                 subtract=np.subtract,
@@ -104,13 +107,16 @@ class _GetMovingSumForCumsumSlot:
                 last_in_prev_cumsum=self.last_in_prev_cumsum,
                 out=self.out
             ):
-                subtract(
-                    curr_cumsum_entry, entry_before_moving_sum_start,
-                    out=out
-                )
-                out += last_in_prev_cumsum
+                while True:
+                    subtract(
+                        curr_cumsum_entry, entry_before_moving_sum_start,
+                        out=out
+                    )
+                    out += last_in_prev_cumsum
 
-        return iterator()
+                    yield
+
+        return get_iterator()
 
     @classmethod
     def from_args(cls, *, cumsum, cumsum_i, probable_out):
@@ -174,7 +180,7 @@ class _IterableForCumsumSlot:
         self, *,
         rotator,
         complete_abs_stem_spectra_cumsum_entry,
-        complex_rotated_mix_spectra_cumsum_entry,
+        complete_rotated_mix_spectra_cumsum_entry,
         get_abs_stem_spectra_moving_sum,
         get_rotated_mix_spectra_moving_sum,
         divider,
@@ -183,8 +189,8 @@ class _IterableForCumsumSlot:
         self.rotator = rotator
         self.complete_abs_stem_spectra_cumsum_entry \
             = complete_abs_stem_spectra_cumsum_entry
-        self.complex_rotated_mix_spectra_cumsum_entry \
-            = complex_rotated_mix_spectra_cumsum_entry
+        self.complete_rotated_mix_spectra_cumsum_entry \
+            = complete_rotated_mix_spectra_cumsum_entry
         self.get_abs_stem_spectra_moving_sum = get_abs_stem_spectra_moving_sum
         self.get_rotated_mix_spectra_moving_sum \
             = get_rotated_mix_spectra_moving_sum
@@ -197,8 +203,8 @@ class _IterableForCumsumSlot:
         if len(self._sub_iterables) == 1:
             return iter(self.rotator)
         else:
-            def get_iterator(iter=zip(*self._sub_iterables)):
-                next(iter)
+            def get_iterator(iter_=zip(*self._sub_iterables)):
+                next(iter_)
 
                 yield
 
@@ -365,7 +371,7 @@ class SpectraBuffersToEqProfiles:
             = self._get_cumsums()
 
         self._kwargs_for_cumsum_slots \
-            = list(self._get_kwargs_for_cumsum_slots)
+            = list(self._get_kwargs_for_cumsum_slots())
 
         self._initialisation_iterables \
             = list(self._get_initialisation_iterables())
@@ -421,7 +427,7 @@ class SpectraBuffersToEqProfiles:
                     _GetMovingSumForCumsumSlot.from_args(
                         cumsum=self._abs_stem_spectra_cumsum,
                         cumsum_i=cumsum_i,
-                        probable_out=self._intermediate_a
+                        probable_out=self.intermediate_a
                     ),
                 "get_rotated_mix_spectra_moving_sum":
                     _GetMovingSumForCumsumSlot.from_args(

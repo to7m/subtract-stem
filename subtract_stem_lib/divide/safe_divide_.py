@@ -43,14 +43,14 @@ class SafeDivider:
 
     def __iter__(self):
         def get_iterator(
-            iter=zip(
+            iter_=zip(
                 self._unsafe_divider,
                 self._generate_is_safes,
                 self._interpolate_missing
             )
         ):
             while True:
-                next(iter)
+                next(iter_)
 
                 yield
 

@@ -3,6 +3,11 @@ import numpy as np
 import subtract_stem_lib as ssl
 
 
+def _test_is_small(arr):
+    if np.abs(arr).max() > 0.000_001:
+        raise Exception("test failed")
+
+
 def test_single():
     rng = np.random.default_rng(0)
 
@@ -27,11 +32,8 @@ def test_single():
     spectra_buffers_to_eq_profile.calculate_eq_profile()
     result = spectra_buffers_to_eq_profile.out
 
-    if np.abs(result - eq_profile).max() > 0.000_001:
-        raise Exception("test failed")
-
-    if np.abs(mix_spectra - stem_spectra * result).max() > 0.000_001:
-        raise Exception("test failed")
+    _test_is_small(result - eq_profile)
+    _test_is_small(mix_spectra - stem_spectra * result)
 
 
 def test_running():
@@ -60,8 +62,24 @@ def test_running():
         np.multiply(stem_spectra, eq_profile_a, out=mix_spectra)
         next(spectra_buffers_to_eq_profiles_iter)
 
-    print(spectra_buffers_to_eq_profiles.out - eq_profile_a)
+    _test_is_small(spectra_buffers_to_eq_profiles.out - eq_profile_a)
 
+    for _ in range(10):
+        rng.random(dtype=np.float32, out=stem_spectra.view(np.float32))
+        np.multiply(stem_spectra, eq_profile_b, out=mix_spectra)
+        next(spectra_buffers_to_eq_profiles_iter)
+
+    if (
+        np.abs(spectra_buffers_to_eq_profiles.out - eq_profile_b).max()
+        < 0.1
+    ):
+        raise Exception("test failed")
+
+    rng.random(dtype=np.float32, out=stem_spectra.view(np.float32))
+    np.multiply(stem_spectra, eq_profile_b, out=mix_spectra)
+    next(spectra_buffers_to_eq_profiles_iter)
+
+    _test_is_small(spectra_buffers_to_eq_profiles.out - eq_profile_b)
 
 
 def all_eq_profiles():
