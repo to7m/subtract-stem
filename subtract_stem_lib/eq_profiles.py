@@ -272,19 +272,19 @@ class SpectraBuffersToEqProfile:
 
     def __iter__(self):
         def get_iterator(
-            initial_rotator=self._initial_rotator,
-            main_rotator=self._main_rotator,
+            initial_rotator_iter=iter(self._initial_rotator),
+            main_rotator_iter=iter(self._main_rotator),
             abs_stem_spectrum=self.intermediate_a,
             rotated_mix_spectrum=self.out,
             abs_stem_spectra_sum=self._abs_stem_spectra_sum,
             rotated_mix_spectra_sum=self._rotated_mix_spectra_sum,
         ):
-            next(initial_rotator)
+            next(initial_rotator_iter)
 
             yield
 
             while True:
-                next(main_rotator)
+                next(main_rotator_iter)
 
                 abs_stem_spectra_sum += abs_stem_spectrum
                 rotated_mix_spectra_sum += rotated_mix_spectrum

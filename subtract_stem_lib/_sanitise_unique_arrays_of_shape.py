@@ -1,9 +1,11 @@
 import numpy as np
 
-from _sanitisation import sanitise_arg as san
+from ._sanitisation import sanitise_arg as san
 
 
-_dtypes_for_dtype_names = {"bool": bool, "float": np.float32}
+_dtypes_for_dtype_names = {
+    "bool": bool, "float": np.float32, "complex": np.complex64
+}
 
 
 def sanitise_unique_arrays_of_shape(

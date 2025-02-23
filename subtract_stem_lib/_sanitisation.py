@@ -44,8 +44,10 @@ def _sanitise_bool(val, name):
         raise TypeError(f"{name!r} should be a bool")
 
 
-sanitise_error_if_not_mono = sanitise_highest_wins = sanitise_subtract \
-    = _sanitise_bool
+sanitise_error_if_not_mono = _sanitise_bool
+sanitise_highest_wins = _sanitise_bool
+sanitise_subtract = _sanitise_bool
+sanitise_ret_reciprocal_eq = _sanitise_bool
 
 
 def _sanitise_callable(val, name):
