@@ -131,7 +131,7 @@ class _GetMovingSumForCumsumSlot:
         )
 
 
-def _safe_divider_for_cumsum_slot_from_args(
+def _divider_for_cumsum_slot_from_args(
     *,
     cumsum_a, cumsum_b, cumsum_i,
     probable_a, probable_b,
@@ -160,7 +160,7 @@ class _IterableForCumsumSlot:
         "rotator",
         "complete_cumsum_a_entry", "complete_cumsum_b_entry",
         "get_moving_sum_a", "get_moving_sum_b",
-        "safe_divider",
+        "divider",
         "is_initialisation"
     ]
 
@@ -169,7 +169,7 @@ class _IterableForCumsumSlot:
         rotator,
         complete_cumsum_a_entry, complete_cumsum_b_entry,
         get_moving_sum_a, get_moving_sum_b,
-        safe_divider,
+        divider,
         is_initialisation
     ):
         self.rotator = rotator
@@ -177,7 +177,7 @@ class _IterableForCumsumSlot:
         self.complete_cumsum_b_entry = complete_cumsum_b_entry
         self.get_moving_sum_a = get_moving_sum_a
         self.get_moving_sum_b = get_moving_sum_b
-        self.safe_divider = safe_divider
+        self.divider = divider
         self.is_initialisation = is_initialisation
 
         self._sub_iterables = list(self._get_subiterables())
@@ -207,7 +207,74 @@ class _IterableForCumsumSlot:
             yield self.get_moving_sum_a
             yield self.get_moving_sum_b
 
-        yield self.safe_divider
+        yield self.divider
+
+
+class SpectraBuffersToEqProfile:
+    __slots__ = [
+        "_rotator", "_divider",
+        "stem_spectra_buffer", "mix_spectra_buffer"
+        "intermediate_a", "intermediate_b",
+        "intermediate_c", "intermediate_d",
+        "out"
+    ]
+
+    def __init__(
+        self, stem_spectra_buffer, mix_spectra_buffer, *,
+        intermediate_a=None,  # numpy.float32
+        intermediate_b=None,  # numpy.complex64
+        intermediate_c=None,  # numpy.float32
+        intermediate_d=None,  # numpy.complex64
+        out=None
+    ):
+        self.stem_spectra_buffer, self.mix_spectra_buffer \
+            = self._sanitise_spectra_buffers(
+                  stem_spectra_buffer, mix_spectra_buffer
+              )
+        (
+            self.intermediate_a, self.intermediate_b,
+            self.intermediate_c, self.intermediate_d
+        ) = self._sanitise_intermediates_and_out(
+            intermediate_a, intermediate_b, intermediate_c, intermediate_d,
+            out
+        )
+
+        self._rotator = +...
+        self._divider = +...
+
+    def __iter__(self):
+        def get_iterator(
+            rotator=self._rotator,
+            abs_stem_spectrum=self.intermediate_a,
+            rotated_mix_spectrum=self.intermediate_b,
+            abs_stem_spectra_sum=self.intermediate_c,
+            rotated_mix_spectra_sum=self.intermediate_d,
+            abs_stem_spectra_sum_fill=self.intermediate_c.fill,
+            rotated_mix_spectra_sum_fill=self.intermediate_d.fill,
+        ):
+            abs_stem_spectra_sum_fill(0)
+            rotated_mix_spectra_sum_fill(0)
+
+            while True:
+                next(rotator)
+
+                abs_stem_spectra_sum += abs_stem_spectrum
+                rotated_mix_spectra_sum += rotated_mix_spectrum
+
+                yield
+
+        return get_iterator()
+
+    def _sanitise_spectra_buffers(self):
+        +...
+
+    def _sanitise_intermediates_and_out(self):
+        +...
+
+    def calculate_eq_profile(self):
+        next(iter(self._divider))
+
+        return self.out
 
 
 class SpectraBuffersToEqProfiles:
@@ -268,7 +335,7 @@ class SpectraBuffersToEqProfiles:
                 for iterator in main_iterators:
                     next(iterator)
 
-                yield
+                    yield
 
         return get_iterator()
 
@@ -350,7 +417,7 @@ class SpectraBuffersToEqProfiles:
                     cumsum_i=cumsum_i,
                     probable_out=self.out
                 ),
-                "safe_divider": _safe_divider_for_cumsum_slot_from_args(
+                "divider": _divider_for_cumsum_slot_from_args(
                     cumsum_a=self._abs_stem_spectra_cumsum,
                     cumsum_b=self._rotated_mix_spectra_cumsum,
                     cumsum_i=cumsum_i,

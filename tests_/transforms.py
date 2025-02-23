@@ -1,8 +1,6 @@
 import numpy as np
 
-from subtract_stem_lib import (
-    GrainsToSpectraBuffer, SpectraBufferOldestToComplexGrains
-)
+import subtract_stem_lib as ssl
 
 
 def test_transforms():
@@ -11,8 +9,8 @@ def test_transforms():
     grain = rng.random(100, dtype=np.float32)
     first_grain = grain.copy()
 
-    forward = GrainsToSpectraBuffer(grain)
-    inverse = SpectraBufferOldestToComplexGrains(forward.out)
+    forward = ssl.GrainsToSpectraBuffer(grain)
+    inverse = ssl.SpectraBufferOldestToComplexGrains(forward.out)
     out_grain = inverse.out.real
 
     next(zip(forward, inverse))
