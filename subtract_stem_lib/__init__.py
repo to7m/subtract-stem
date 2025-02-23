@@ -14,7 +14,8 @@ from .transforms import (
     GrainsToSpectraBuffer, SpectraBufferOldestToComplexGrains
 )
 from .eq_profiles import (
-    SpectraBuffersToEqProfiles, ApplyEqProfilesToSpectraBufferOldest
+    SpectraBuffersToEqProfile, SpectraBuffersToEqProfiles,
+    ApplyEqProfilesToSpectraBufferOldest
 )
 
 
