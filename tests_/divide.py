@@ -25,14 +25,8 @@ def safe_divide():
 def ataabtrnfatbaa():
     rng = np.random.default_rng(0)
 
-    a = (
-        rng.random(100, dtype=np.float32)
-        + 1j * rng.random(100, dtype=np.float32)
-    )
-    b = (
-        rng.random(100, dtype=np.float32)
-        + 1j * rng.random(100, dtype=np.float32)
-    )
+    a = rng.random(200, dtype=np.float32).view(np.complex64)
+    b = rng.random(200, dtype=np.float32).view(np.complex64)
 
     abs_a, rotated_b = ssl.ataabtrnfatbaa(a, b)
 
