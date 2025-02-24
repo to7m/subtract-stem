@@ -1,6 +1,7 @@
 python (tested with 3.12.7)
 
 python packages:
+    clize
     librosa
     numpy
     soundfile
