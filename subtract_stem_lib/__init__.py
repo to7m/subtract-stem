@@ -1,5 +1,6 @@
 import numpy as np
 
+from .timestamp import Timestamp
 from .buffer import (
     Buffer, buffer_from_constructor, buffer_from_array_args, buffer_from_array
 )

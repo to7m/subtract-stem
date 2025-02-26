@@ -1,5 +1,6 @@
 from itertools import chain
 from math import tau
+from fractions import Fraction
 import numpy as np
 
 from .defaults import GRAIN_LEN
@@ -11,7 +12,7 @@ from ._sanitise_hann_grain_len_interval_len import (
 
 def get_hann_window(
     grain_len=GRAIN_LEN, *,
-    interval_len=None, delay_audio_samples=0.0
+    interval_len=None, delay_audio_samples=Fraction(0)
 ):
     _, interval_len \
         = sanitise_hann_grain_len_interval_len(grain_len, interval_len)
@@ -21,7 +22,7 @@ def get_hann_window(
 
     # arr = phase
     arr = np.arange(grain_len, dtype=np.float32)
-    arr += delay_audio_samples
+    arr += float(delay_audio_samples)
     arr *= tau / grain_len
 
     # arr = window
@@ -338,7 +339,7 @@ class AudioToHannGrains:
         self, audio, *,
         start_i, interval_len, num_of_iterations,
         grain_len=GRAIN_LEN,
-        delay_audio_samples=0.0,
+        delay_audio_samples=Fraction(0),
         out=None
     ):
         self.start_i = san("start_i")

@@ -1,3 +1,4 @@
+from .timestamp import test_timestamp
 from .buffer import test_buffer
 from .hone_in import test_hone_in
 from .divide import safe_divide, ataabtrnfatbaa, all_divide
@@ -8,6 +9,7 @@ from .eq_profiles import all_eq_profiles
 
 
 def all_tests():
+    test_timestamp()
     test_buffer()
     test_hone_in()
     all_divide()

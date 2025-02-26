@@ -82,18 +82,26 @@ def _make_sanitise_float(*, allow_convert=False, range_=None):
     return sanitise_float
 
 
-sanitise_delay_audio_samples = sanitise_first_val \
-    = _make_sanitise_float(allow_convert=True)
+sanitise_first_val = _make_sanitise_float(allow_convert=True)
 sanitise_val_add = _make_sanitise_float(allow_convert=True, range_="!=0")
 sanitise_max_abs_result = sanitise_min_diff \
     = _make_sanitise_float(allow_convert=True, range_=">=0")
 
 
-def _sanitise_fraction(val, name):
-    return Fraction(val)
+def _make_sanitise_fraction(*, range_=None):
+    def sanitise_fraction(val, name):
+        if range_ == ">0":
+            if val <= 0:
+                raise ValueError(f"{name!r} should be greater than 0")
+
+        return Fraction(val)
+
+    return sanitise_fraction
 
 
-sanitise_sample_rate = _sanitise_fraction
+sanitise_delay_audio_samples = sanitise_samples = sanitise_total_seconds \
+    = _make_sanitise_fraction()
+sanitise_sample_rate = _make_sanitise_fraction(range_=">0")
 
 
 def _make_sanitise_int(*, allow_convert=False, range_=None):
@@ -125,6 +133,13 @@ sanitise_interval_len = sanitise_num_of_items = sanitise_num_of_iterations \
 sanitise_grain_len = _make_sanitise_int(range_=">=2")
 
 
+def sanitise_s(val, name):
+    if type(val) is not str:
+        raise TypeError(f"{name!r} should be a str")
+
+    return val
+
+
 def sanitise_path(val, name):
     if isinstance(val, Path):
         return val
@@ -132,6 +147,20 @@ def sanitise_path(val, name):
         return Path(val)
     else:
         raise TypeError(f"{name!r} should be a pathlib.Path or a str")
+
+
+def sanitise_reference_point(val, name):
+    sanitise_s(val, name)
+
+    if val not in {
+        "ZERO",
+        "DELAY_STEM", "DELAY_INTERMEDIATE",
+        "OLD_STEM_END", "NEW_STEM_END",
+        "OLD_INTERMEDIATE_END", "NEW_INTERMEDIATE_END",
+    }:
+        raise ValueError(f"{name!r} should be a recognised reference point")
+
+    return val
 
 
 def sanitise_buffer_data(val, name):
