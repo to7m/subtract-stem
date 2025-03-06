@@ -75,6 +75,23 @@ def test_random():
         raise Exception("test failed")
 
 
+def test_fractional_delay():
+    rng = np.random.default_rng(0)
+
+    stem_block = rng.random(20, dtype=np.float32)
+    mix_block = np.empty(20, dtype=np.float32)
+    mix_block[1:] = stem_block[:-1]
+    mix_block[0] = stem_block[-1]
+
+    stem_spectrum = np.fft.fft(stem_block)
+    mix_spectrum = np.fft.fft(mix_block)
+
+    for a, b in zip(stem_spectrum, mix_spectrum):
+        print(a, b)
+
+
+
 def all_audio_pair_to_eq_profile():
     test_freq_and_noise()
     test_random()
+    test_fractional_delay()
