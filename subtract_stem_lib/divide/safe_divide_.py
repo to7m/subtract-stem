@@ -2,6 +2,7 @@ import numpy as np
 
 from ..defaults import MAX_ABS_RESULT
 from .._sanitisation import sanitise_arg as san
+from .._sanitise_unique_arrays_of_shape import sanitise_unique_arrays_of_shape
 from .unsafe_divide import UnsafeDivider
 from .is_safe import GenerateIsSafes
 from .interpolate_missing import InterpolateMissing
@@ -57,21 +58,14 @@ class SafeDivider:
         return get_iterator()
 
     def _sanitise_intermediates(self, intermediate_a, intermediate_b):
-        for arr, dtype, name, sanitiser_name in (
-            (intermediate_a, np.float32, "intermediate_a", "array_1d_float"),
-            (intermediate_b, bool, "intermediate_b", "array_1d_bool"),
-        ):
-            if arr is None:
-                arr = np.empty(self.a.shape, dtype=dtype)
-            else:
-                san(name, sanitiser_name)
-
-                if arr.shape != self.a.shape:
-                    raise ValueError(
-                        f"{name!r} should have same shape as 'a' and 'b'"
-                    )
-
-            yield arr
+        return sanitise_unique_arrays_of_shape(
+            array_infos=[
+                (intermediate_a, "intermediate_a", "float"),
+                (intermediate_b, "intermediate_b", "bool")
+            ],
+            reference_shape=self.a.shape,
+            reference_name="'a' and 'b'"
+        )
 
 
 def safe_divide(

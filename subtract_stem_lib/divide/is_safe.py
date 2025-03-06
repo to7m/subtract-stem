@@ -2,6 +2,7 @@ import numpy as np
 
 from ..defaults import MAX_ABS_RESULT
 from .._sanitisation import sanitise_arg as san
+from .._sanitise_unique_arrays_of_shape import sanitise_unique_arrays_of_shape
 
 
 class GenerateIsSafes:
@@ -38,18 +39,11 @@ class GenerateIsSafes:
         return get_iterator()
 
     def _sanitise_intermediate_and_out(self, intermediate, out):
-        for arr, dtype, name, sanitiser_name in (
-            (intermediate, np.float32, "intermediate", "array_1d_float"),
-            (out, bool, "out", "array_1d_bool")
-        ):
-            if arr is None:
-                arr = np.empty(self.a.shape, dtype=dtype)
-            else:
-                san(name, sanitiser_name)
-
-                if arr.shape != self.a.shape:
-                    raise ValueError(
-                        f"if provided, {name!r} should have same shape as 'a'"
-                    )
-
-            yield arr
+        return sanitise_unique_arrays_of_shape(
+            array_infos=[
+                (intermediate, "intermediate", "float"),
+                (out, "out", "bool")
+            ],
+            reference_shape=self.a.shape,
+            reference_name="'a'"
+        )

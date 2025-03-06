@@ -1,6 +1,9 @@
 import inspect
 
 
+_UNIQUE_NONE = object()
+
+
 class _Sanitiser:
     def __init__(self, callable_, name):
         self.callable_ = callable_
@@ -49,16 +52,19 @@ class Sanitisers:
 
         return inst
 
-    def sanitise_arg(self, name, sanitiser_name=None):
-        f_locals = inspect.stack()[1].frame.f_locals
-
+    def sanitise_arg(self, name, sanitiser_name=None, *, val=_UNIQUE_NONE):
         if type(name) is not str:
             raise TypeError("'name' should be a str")
 
-        if name in f_locals:
-            val = f_locals[name]
-        else:
-            raise KeyError(f"{name!r} not found in locals of calling frame")
+        if val is _UNIQUE_NONE:
+            f_locals = inspect.stack()[1].frame.f_locals
+
+            if name in f_locals:
+                val = f_locals[name]
+            else:
+                raise KeyError(
+                    f"{name!r} not found in locals of calling frame"
+                )
 
         if sanitiser_name is None:
             sanitiser_name = name

@@ -31,8 +31,12 @@ sanitise_array = _make_sanitise_array()
 sanitise_array_1d = _make_sanitise_array(dimensions=1)
 sanitise_array_1d_bool = sanitise_is_safe \
     = _make_sanitise_array(dimensions=1, dtype=bool)
-sanitise_array_1d_float = sanitise_audio = sanitise_grain = sanitise_window \
-    = _make_sanitise_array(dimensions=1, dtype=np.float32)
+sanitise_array_1d_float = _make_sanitise_array(dimensions=1, dtype=np.float32)
+sanitise_audio = sanitise_array_1d_float
+sanitise_grain = sanitise_array_1d_float
+sanitise_mix_audio = sanitise_array_1d_float
+sanitise_stem_audio = sanitise_array_1d_float
+sanitise_window = sanitise_array_1d_float
 sanitise_array_1d_complex = sanitise_eq_profile = sanitise_spectrum \
     = _make_sanitise_array(dimensions=1, dtype=np.complex64)
 
@@ -99,8 +103,10 @@ def _make_sanitise_fraction(*, range_=None):
     return sanitise_fraction
 
 
-sanitise_delay_audio_samples = sanitise_samples = sanitise_total_seconds \
-    = _make_sanitise_fraction()
+_sanitise_fraction = _make_sanitise_fraction()
+sanitise_delay_audio_samples = _sanitise_fraction
+sanitise_delay_stem_samples = _sanitise_fraction
+sanitise_total_seconds = _sanitise_fraction
 sanitise_sample_rate = _make_sanitise_fraction(range_=">0")
 
 

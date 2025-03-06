@@ -4,7 +4,7 @@ import subtract_stem_lib as ssl
 
 
 def _test_is_small(arr):
-    if np.abs(arr).max() > 0.000_001:
+    if abs(arr).max() > 0.000_001:
         raise Exception("test failed")
 
 

@@ -18,6 +18,7 @@ from .eq_profiles import (
     SpectraBuffersToEqProfile, SpectraBuffersToEqProfiles,
     ApplyEqProfilesToSpectraBufferOldest
 )
+from .audio_pair_to_eq_profile import AudioPairToEqProfile
 
 
 # There's no thread-safe way of doing this so I'm just putting it here to make

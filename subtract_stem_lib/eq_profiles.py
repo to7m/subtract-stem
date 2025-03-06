@@ -245,7 +245,7 @@ def _sanitise_intermediates_and_out(
 class SpectraBuffersToEqProfile:
     __slots__ = [
         "_abs_stem_spectra_sum", "_rotated_mix_spectra_sum",
-        "_initial_rotator", "_main_rotator", "_divider",
+        "_initial_rotator", "_main_rotator", "_divider_iter",
         "stem_spectra_buffer", "mix_spectra_buffer",
         "max_abs_result", "ret_reciprocal_eq",
         "intermediate_a", "intermediate_b",
@@ -274,7 +274,7 @@ class SpectraBuffersToEqProfile:
         self._abs_stem_spectra_sum, self._rotated_mix_spectra_sum \
             = self._get_sums()
         self._initial_rotator, self._main_rotator = self._get_rotators()
-        self._divider = self._get_divider()
+        self._divider_iter = iter(self._get_divider())
 
     def __iter__(self):
         def get_iterator(
@@ -289,9 +289,7 @@ class SpectraBuffersToEqProfile:
 
             yield
 
-            while True:
-                next(main_rotator_iter)
-
+            for i, _ in enumerate(main_rotator_iter, 1):
                 abs_stem_spectra_sum += abs_stem_spectrum
                 rotated_mix_spectra_sum += rotated_mix_spectrum
 
@@ -330,7 +328,9 @@ class SpectraBuffersToEqProfile:
         )
 
     def calculate_eq_profile(self):
-        next(iter(self._divider))
+        next(self._divider_iter)
+
+        return self.out
 
 
 class SpectraBuffersToEqProfiles:
