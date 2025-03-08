@@ -8,7 +8,7 @@ from .._sanitisation import sanitise_arg as san
 from .._sanitise_spectra_buffer import sanitise_spectra_buffer
 
 
-ONE_ROTATED_CONJUGATED = (-1) ** (-1 / pi)
+_ONE_ROTATED_CONJUGATED = (-1) ** (-1 / pi)
 
 
 class Ataabtrnfatbaa:
@@ -36,7 +36,7 @@ class Ataabtrnfatbaa:
 
     def __iter__(self):
         def get_iterator(
-            ONE_ROTATED_CONJUGATED=ONE_ROTATED_CONJUGATED,
+            ONE_ROTATED_CONJUGATED=_ONE_ROTATED_CONJUGATED,
             arctan2=np.arctan2, power=np.power, multiply=np.multiply,
             abs_=np.abs,
             a=self.a, b=self.b,
