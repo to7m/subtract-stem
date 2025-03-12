@@ -324,12 +324,8 @@ class AudioToGrains:
 
             yield bound_method(grain_range)
 
-    @classmethod
-    def from_hann_args(self):
-        +...
 
-
-class _:
+class AudioToHannGrains:
     __slots__ = [
         "_audio_to_grains", "_delay_audio_samples_remainder",
         "audio",

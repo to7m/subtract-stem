@@ -98,8 +98,6 @@ def test_fractional_delay():
 
     stem_block = rng.random(333, dtype=np.float32)
     mix_block = _delay_block(stem_block, 3.5)
-    #stem_block = _make_cos_wave(333, freq=100)
-    #mix_block = _make_cos_wave(333, freq=100, delay_samples=3.5)
 
     stem_audio = np.empty(9990, dtype=np.float32)
     mix_audio = np.empty(9990, dtype=np.float32)
@@ -107,19 +105,28 @@ def test_fractional_delay():
         stem_audio[i:i+333] = stem_block
         mix_audio[i:i+333] = mix_block
 
-    audio_pair_to_eq_profile = ssl.AudioPairToEqProfile(
-        stem_audio, mix_audio,
-        start_i=333, interval_len=111, num_of_iterations=28,
-        grain_len=333,
-        delay_stem_samples=3.5
-    )
+    means = []
 
-    for _ in audio_pair_to_eq_profile:
-        pass
+    for i in range(11):
+        delay_stem_samples = 3 + i/10
 
-    result = audio_pair_to_eq_profile.calculate_eq_profile()
+        audio_pair_to_eq_profile = ssl.AudioPairToEqProfile(
+            stem_audio, mix_audio,
+            start_i=333, interval_len=111, num_of_iterations=28,
+            grain_len=333,
+            delay_stem_samples=delay_stem_samples
+        )
 
-    print(abs(result))
+        for _ in audio_pair_to_eq_profile:
+            pass
+
+        result = audio_pair_to_eq_profile.calculate_eq_profile()
+
+        means.append(abs(1 - abs(result)).mean())
+
+    for mean in means:
+        if means[5] > mean:
+            raise Exception("test failed")
 
 
 def all_audio_pair_to_eq_profile():
