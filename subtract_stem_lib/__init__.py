@@ -19,6 +19,7 @@ from .eq_profiles import (
     ApplyEqProfilesToSpectraBufferOldest
 )
 from .audio_pair_to_eq_profile import AudioPairToEqProfile
+from .find_delay_stem import FindDelayStem, FindDelayStemS
 
 
 # There's no thread-safe way of doing this so I'm just putting it here to make
@@ -27,7 +28,6 @@ np.seterr(all="raise", divide="ignore", invalid="ignore")
 
 
 """ old:
-from .find_delay_stem_s import find_delay_stem_s
 from .stem_in_mix import (
     GenerateSingleStemInMix, GenerateRunningStemInMix
 )

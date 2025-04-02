@@ -61,7 +61,8 @@ def _sanitise_callable(val, name):
         raise TypeError(f"{name!r} should be callable")
 
 
-sanitise_constructor = sanitise_scoring_function = _sanitise_callable
+sanitise_constructor = sanitise_logger = sanitise_scoring_function \
+    = _sanitise_callable
 
 
 def _make_sanitise_float(*, allow_convert=False, range_=None):
@@ -88,7 +89,7 @@ def _make_sanitise_float(*, allow_convert=False, range_=None):
 
 sanitise_first_val = _make_sanitise_float(allow_convert=True)
 sanitise_val_add = _make_sanitise_float(allow_convert=True, range_="!=0")
-sanitise_max_abs_result = sanitise_min_diff \
+sanitise_max_abs_eq_profile = sanitise_max_abs_result = sanitise_min_diff \
     = _make_sanitise_float(allow_convert=True, range_=">=0")
 
 
@@ -134,8 +135,11 @@ def _make_sanitise_int(*, allow_convert=False, range_=None):
 
 sanitise_start_i = _make_sanitise_int()
 sanitise_lookbehind = _make_sanitise_int(range_=">=0")
-sanitise_interval_len = sanitise_num_of_items = sanitise_num_of_iterations \
-    = _make_sanitise_int(range_=">=1")
+_sanitise_int_ge_1 = _make_sanitise_int(range_=">=1")
+sanitise_interval_len = _sanitise_int_ge_1
+sanitise_num_of_items = _sanitise_int_ge_1
+sanitise_num_of_iterations = _sanitise_int_ge_1
+sanitise_num_of_iterations_per_guess = _sanitise_int_ge_1
 sanitise_grain_len = _make_sanitise_int(range_=">=2")
 
 
