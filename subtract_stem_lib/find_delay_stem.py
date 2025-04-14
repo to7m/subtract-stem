@@ -1,8 +1,9 @@
 from .defaults import (
-    FIND_DELAY_STEM_SAMPLES_VAL_ADD, FIND_DELAY_STEM_SAMPLES_MIN_DIFF
+    MAX_ABS_RESULT,
+    FIND_DELAY_STEM_SAMPLES_VAL_ADD, FIND_DELAY_STEM_SAMPLES_MIN_DIFF,
     FIND_DELAY_STEM_SECONDS_VAL_ADD, FIND_DELAY_STEM_SECONDS_MIN_DIFF
 )
-from ._sanitisation import san
+from ._sanitisation import sanitise_arg as san
 from ._sanitise_unique_arrays_of_shape import sanitise_unique_arrays_of_shape
 
 
@@ -10,7 +11,7 @@ class FindDelayStemSamples:
     __slots__ = [
         "stem_audio", "mix_audio",
         "start_i", "interval_len", "num_of_iterations_per_guess",
-        "grain_len",
+        "inner_grain_len",
         "first_guess", "first_guess_add", "min_guess_diff",
         "max_abs_eq_profile",
         "intermediate_a", "intermediate_b", "intermediate_c",
@@ -20,14 +21,26 @@ class FindDelayStemSamples:
     ]
 
     def __init__(
-        self,
+        self, *,
         stem_audio, mix_audio,
-        start_i, 
+        start_i, interval_len, num_of_iterations_per_guess,
+        inner_grain_len,
+        first_guess=0.0, first_guess_add=FIND_DELAY_STEM_SAMPLES_VAL_ADD,
+        min_guess_diff=FIND_DELAY_STEM_SAMPLES_MIN_DIFF,
+        max_abs_eq_profile=MAX_ABS_RESULT,
+        intermediate_a=None,  # numpy.float32 of size grain_len???NEED TO UPDATE THIS BIT
+        intermediate_b=None,  # numpy.complex64 Buffer of size grain_len
+        intermediate_c=None,  # numpy.complex64 Buffer of size grain_len
+        intermediate_d=None,  # bool of size grain_len
+        intermediate_e=None,  # numpy.complex64 Buffer of size grain_len
+        logger=None
     ):
         self.stem_audio, self.mix_audio = san("stem_audio"), san("mix_audio")
         self.start_i = san("start_i")
-        self.grain_len, self.interval_len \
-            = sanitise_hann_grain_len_interval_len(grain_len, interval_len)
+        self.inner_grain_len, self.interval_len \
+            = sanitise_hann_inner_grain_len_interval_len(
+                  inner_grain_len, interval_len
+              )
         self.num_of_iterations_per_guess = san("num_of_iterations_per_guess")
         self.first_guess = san("first_guess")
         self.first_guess_add = san("first_guess_add")
@@ -41,6 +54,7 @@ class FindDelayStemSamples:
             intermediate_e
         )
         self.logger = san("logger")
+
         self.results = None
 
     def __iter__(self):
@@ -88,15 +102,53 @@ class FindDelayStemSamples:
             out=self.intermediate_e
         )
 
-        logger(delay_stem_samples, 0)
-        for i, _ in enumerate(audio_pair_to_eq_profile, 1):
-            logger(delay_stem_samples, i)
+        if logger is None:
+            for _ in audio_pair_to_eq_profile:
+                pass
+        else:
+            logger(delay_stem_samples, 0)
+            for i, _ in enumerate(audio_pair_to_eq_profile, 1):
+                logger(delay_stem_samples, i)
 
         eq_profile = audio_pair_to_eq_profile.calculate_eq_profile()
 
         return abs(eq_profile).sum()
 
 
-+...
 class FindDelayStemSeconds:
-    ...
+    __slots__ = ["find_delay_stem_samples", "sample_rate", "results"]
+
+    def __init__(self, *, find_delay_stem_samples, sample_rate):
+        self.find_delay_stem_samples = san("find_delay_stem_samples")
+        self.sample_rate = san("sample_rate")
+
+        self.results = None
+
+    def __iter__(self):
+        for _ in self.find_delay_stem_samples:
+            self.results = {
+                k: v / self.sample_rate
+                for k, v in self.find_delay_stem_samples.results.items()
+            }
+
+            yield
+
+    @classmethod
+    def from_best_fit_args(
+        cls, *,
+        stem_audio, mix_audio,
+        start_ts=Timestamp.from_total_seconds(0),
+        stop_ts=Timestamp.from_total_seconds(0, reference_point="MIX_END"),
+        interval_len, num_of_iterations_per_guess,
+        inner_grain_len,
+        first_guess=0.0, first_guess_add=FIND_DELAY_STEM_SECONDS_VAL_ADD,
+        min_guess_diff=FIND_DELAY_STEM_SECONDS_MIN_DIFF,
+        max_abs_eq_profile=MAX_ABS_RESULT,
+        intermediate_a=None,  # numpy.float32 of size grain_len???NEED TO UPDATE THIS BIT
+        intermediate_b=None,  # numpy.complex64 Buffer of size grain_len
+        intermediate_c=None,  # numpy.complex64 Buffer of size grain_len
+        intermediate_d=None,  # bool of size grain_len
+        intermediate_e=None,  # numpy.complex64 Buffer of size grain_len
+        logger=None
+    ):
+        +...

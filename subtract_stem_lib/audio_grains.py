@@ -5,45 +5,135 @@ import numpy as np
 
 from .defaults import INNER_GRAIN_LEN
 from ._sanitisation import sanitise_arg as san, sanitise_args
-from ._sanitise_pad_lens import sanitise_pad_lens
-from ._sanitise_hann_inner_grain_len_interval_len import (
-    sanitise_hann_inner_grain_len_interval_len
-)
 
 
-def get_hann_window(
-    inner_grain_len=GRAIN_LEN, *,
-    pad_len=None, left_pad_len=None, right_pad_len=None,
-    interval_len=None, delay_audio_samples=Fraction(0)
-):
-    _, interval_len = sanitise_hann_inner_grain_len_interval_len(
-        inner_grain_len, interval_len
-    )
-    left_pad_len, right_pad_len \
-        = sanitise_pad_lens(pad_len, left_pad_len, right_pad_len)
-    delay_audio_samples = san("delay_audio_samples")
+def sanitise_pad_lens(self, pad_len, left_pad_len, right_pad_len):
+    if pad_len is None:
+        yield 0 if left_pad_len is None else san("left_pad_len")
+        yield 0 if right_pad_len is None else san("right_pad_len")
+    else:
+        if left_pad_len is not None or right_pad_len is not None:
+            raise TypeError(
+                "if 'pad_len' is provided, neither 'left_pad_len' nor "
+                "'right_pad_len' should be provided"
+            )
 
-    overlap = grain_len // interval_len
+        yield san("pad_len")
+        yield pad_len
 
-    window_len = left_pad_len + inner_grain_len + right_pad_len
-    window = np.empty(window_len, dtype=np.float32)
 
-    view = window[left_pad_len:-right_pad_len]
+class InnerGrainInfo:
+    __slots__ = ["inner_grain_len", "interval_len", "overlap"]
 
-    # view = phase
-    np.arange(inner_grain_len, out=view)
-    view += float(delay_audio_samples)
-    view *= tau / grain_len
+    def __init__(
+        self, *, inner_grain_len=None, interval_len=None, overlap=None
+    ):
+        self.inner_grain_len, self.interval_len, self.overlap \
+            = self._sanitise_args(inner_grain_len, interval_len, overlap)
 
-    # view = window
-    np.cos(view, out=view)
-    np.subtract(1, view, out=view)
-    view *= (1 / overlap)
+    def _strip_none(inner_grain_len, interval_len, overlap):
+        if inner_grain_len is None:
+            if None in (interval_len, overlap):
+                inner_grain_len = INNER_GRAIN_LEN
+            else:
+                inner_grain_len = interval_len * overlap
+        elif interval_len is None and overlap is None:
+            interval_len = INTERVAL_LEN
+        elif interval_len is None:
+            if inner_grain_len % overlap == 0:
+                interval_len = inner_grain_len // overlap
+            else:
+                raise ValueError(
+                    f"'inner_grain_len' ({inner_grain_len}) is not divisible "
+                    f"by 'overlap' ({overlap})"
+                )
+        else:
+            if inner_grain_len % interval_len == 0:
+                overlap = inner_grain_len // interval_len
+            else:
+                raise ValueError(
+                    f"'inner_grain_len' ({inner_grain_len}) is not divisible "
+                    f"by 'interval_len' ({interval_len})"
+                )
 
-    window[:left_pad_len] = 0
-    window[-right_pad_len:] = 0
+        return inner_grain_len, interval_len, overlap
 
-    return arr
+    def _sanitise_args(self, inner_grain_len, interval_len, overlap):
+        if inner_grain_len is not None:
+            inner_grain_len = san("inner_grain_len")
+
+        if interval_len is not None:
+            interval_len = san("interval_len")
+
+        if overlap is not None:
+            overlap = san("overlap")
+
+        while None in (inner_grain_len, interval_len, overlap):
+            inner_grain_len, interval_len, overlap \
+                = self._strip_none(inner_grain_len, interval_len, overlap)
+
+        if inner_grain_len != interval_len * overlap:
+            raise ValueError(
+                f"'inner_grain_len' ({inner_grain_len}) is not "
+                f"'interval_len' ({interval_len}) * 'overlap' ({overlap})"
+            )
+
+        return inner_grain_len, interval_len, overlap
+
+    def _get_hann_window_arrays(self):
+        window_len = left_pad_len + self.inner_grain_len + right_pad_len
+        window = np.empty(window_len, dtype=np.float32)
+
+        window[:left_pad_len] = 0
+        inner_window = window[left_pad_len:len(window) - right_pad_len]
+        window[len(window) - right_pad_len:] = 0
+
+        return window, inner_window
+
+    def _set_unscaled_inner_window(self, arr):
+        # arr = phase
+        np.arange(self.inner_grain_len, out=arr)
+        arr += float(delay_audio_samples)
+        arr *= tau / self.inner_grain_len
+
+        # arr = unscaled inner window
+        np.cos(arr, out=arr)
+        np.subtract(1, arr, out=arr)
+
+    def _get_scale(self, inner_window):
+        scale = inner_window[:self.interval_len].copy()
+
+        for i in range(1, self.overlap):
+            start_i = i * self.interval_len
+            stop_i = start_i + self.interval_len
+            scale += inner_window[start_i:stop_i]
+
+        np.divide(1, scale, out=scale)
+
+        return scale
+
+    def _apply_scale(self, inner_window, scale):
+        for i in range(self.overlap):
+            start_i = i * self.interval_len
+            stop_i = start_i + self.interval_len
+            inner_window[start_i:stop_i] *= scale
+
+    def get_hann_window(
+        self, *,
+        pad_len=None, left_pad_len=None, right_pad_len=None,
+        delay_audio_samples=Fraction(0)
+    ):
+        left_pad_len, right_pad_len \
+            = sanitise_pad_lens(pad_len, left_pad_len, right_pad_len)
+        delay_audio_samples = san("delay_audio_samples")
+
+        window, inner_window = self._get_hann_window_arrays()
+
+        self._set_unscaled_inner_window(inner_window)
+        scale = self._get_scale(inner_window)
+        self._apply_scale(inner_window, scale)
+
+        return window
 
 
 class _GrainRanges:
@@ -340,46 +430,57 @@ class AudioToGrains:
 
 class AudioToHannGrains:
     __slots__ = [
-        "_audio_to_grains", "_delay_audio_samples_remainder",
+        "_inner_grain_info",
+        "_audio_to_grains",
+        "_delay_audio_samples_remainder",
         "audio",
-        "start_i", "interval_len", "num_of_iterations",
-        "inner_grain_len", "left_pad_len", "right_pad_len",
+        "start_i", "num_of_iterations",
+        "inner_grain_len", "interval_len", "overlap",
+        "left_pad_len", "right_pad_len", "grain_len",
         "delay_audio_samples",
         "out"
     ]
 
     def __init__(
         self, audio, *,
-        start_i, num_of_iterations, interval_len=None,
-        inner_grain_len=INNER_GRAIN_LEN,
+        start_i, num_of_iterations,
+        inner_grain_len=None, interval_len=None, overlap=None,
         pad_len=None, left_pad_len=None, right_pad_len=None,
         delay_audio_samples=Fraction(0),
         out=None
     ):
         self.start_i = san("start_i")
-        self.grain_len, self.interval_len \
-            = sanitise_hann_grain_len_interval_len(grain_len, interval_len)
-        self.left_pad_len, self.right_pad_len \
-            = self._sanitise_pad_lens(pad_len, left_pad_len, right_pad_len)
-        self.delay_audio_samples = san("delay_audio_samples")
-        self.out = self._sanitise_out(out)
 
+        self._inner_grain_info = InnerGrainInfo(
+            inner_grain_len=inner_grain_len,
+            interval_len=interval_len, overlap=overlap
+        )
+        self.inner_grain_len = self._inner_grain_info.inner_grain_len
+        self.interval_len = self._inner_grain_info.interval_len
+        self.overlap = self._inner_grain_info.overlap
+
+        self.left_pad_len, self.right_pad_len \
+            = sanitise_pad_lens(pad_len, left_pad_len, right_pad_len)
+        self.grain_len \
+            = self.left_pad_len + self.inner_grain_len + self.right_pad_len
+
+        self.delay_audio_samples = san("delay_audio_samples")
         self._delay_audio_samples_remainder = self.delay_audio_samples % 1
         delay_audio_samples_whole = int(
             self.delay_audio_samples - self._delay_audio_samples_remainder
         )
 
+        self.out = self._sanitise_out(out)
+
         self._audio_to_grains = AudioToGrains(
             audio,
             start_i=start_i - delay_audio_samples_whole,
-            interval_len=interval_len,
+            interval_len=self.interval_len,
             num_of_iterations=num_of_iterations,
             window=self._get_window(),
-            out=self.out[self.left_pad_len:-self.right_pad_len]
+            out=self.out[self.left_pad_len:len(self.out) - self.right_pad_len]
         )
-
         self.audio = audio
-        self.interval_len = interval_len
         self.num_of_iterations = num_of_iterations
 
     def __iter__(self):
@@ -387,27 +488,25 @@ class AudioToHannGrains:
 
     def _sanitise_out(self, out):
         if out is None:
-            out = np.empty(self.padded_grain_len, dtype=np.float32)
+            out = np.empty(self.grain_len, dtype=np.float32)
         else:
             out = san("out", "array_1d_float")
 
-            if len(out) != self.padded_grain_len:
+            if len(out) != self.grain_len:
                 raise ValueError(
-                    "if provided, 'out' should be of size (padded_grain_len "
-                    "+ pad_len * 2) or (padded_grain_len + left_pad_len + "
+                    "if provided, 'out' should be of size (inner_grain_len + "
+                    "pad_len * 2) or (left_pad_len + padded_grain_len + "
                     "right_pad_len)"
                 )
 
         out[:self.left_pad_len] = 0
-        out[-self.right_pad_len:] = 0
+        out[self.grain_len - self.right_pad_len:] = 0
 
         return out
 
     def _get_window(self):
-        return get_hann_window(
-            inner_grain_len=self.inner_grain_len,
+        return self._inner_grain_info.get_hann_window(
             left_pad_len=self.left_pad_len, right_pad_len=self.right_pad_len,
-            interval_len=self.interval_len,
             delay_audio_samples=self._delay_audio_samples_remainder
         )
 

@@ -1,10 +1,10 @@
 from fractions import Fraction
 
-from .defaults import GRAIN_LEN, MAX_ABS_RESULT
+from .defaults import INNER_GRAIN_LEN, MAX_ABS_RESULT
 from ._sanitisation import sanitise_arg as san, sanitise_args
 from ._sanitise_unique_arrays_of_shape import sanitise_unique_arrays_of_shape
-from ._sanitise_hann_grain_len_interval_len import (
-    sanitise_hann_grain_len_interval_len
+from ._sanitise_hann_inner_grain_len_interval_len import (
+    sanitise_hann_inner_grain_len_interval_len
 )
 from .audio_grains import AudioToHannGrains
 from .transforms import GrainsToSpectraBuffer
@@ -18,7 +18,7 @@ class AudioPairToEqProfile:
         "_spectra_buffers_to_eq_profile",
         "stem_audio", "mix_audio",
         "start_i", "interval_len", "num_of_iterations",
-        "grain_len",
+        "inner_grain_len",
         "delay_stem_samples", "max_abs_result", "ret_reciprocal_eq",
         "intermediate_a", "intermediate_b", "intermediate_c",
         "intermediate_d",
@@ -29,11 +29,11 @@ class AudioPairToEqProfile:
     def __init__(
         self, stem_audio, mix_audio, *,
         start_i, interval_len, num_of_iterations,
-        grain_len=GRAIN_LEN,
+        inner_grain_len=INNER_GRAIN_LEN,
         delay_stem_samples=Fraction(0),
         max_abs_result=MAX_ABS_RESULT,
         ret_reciprocal_eq=False,
-        intermediate_a=None,  # numpy.float32 of size grain_len
+        intermediate_a=None,  # numpy.float32 of size grain_len???NEED TO UPDATE THIS BIT
         intermediate_b=None,  # numpy.complex64 Buffer of size grain_len
         intermediate_c=None,  # numpy.complex64 Buffer of size grain_len
         intermediate_d=None,  # bool of size grain_len
@@ -41,8 +41,10 @@ class AudioPairToEqProfile:
     ):
         self.stem_audio, self.mix_audio, self.delay_stem_samples \
             = sanitise_args("stem_audio", "mix_audio", "delay_stem_samples")
-        self.grain_len, self.interval_len \
-            = sanitise_hann_grain_len_interval_len(grain_len, interval_len)
+        self.inner_grain_len, self.interval_len \
+            = sanitise_hann_inner_grain_len_interval_len(
+                  inner_grain_len, interval_len
+              )
 
         (
             self.intermediate_a, self.intermediate_b, self.intermediate_c,
