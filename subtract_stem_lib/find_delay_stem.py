@@ -5,13 +5,14 @@ from .defaults import (
 )
 from ._sanitisation import sanitise_arg as san
 from ._sanitise_unique_arrays_of_shape import sanitise_unique_arrays_of_shape
+from .audio_grains import InnerGrainInfo
 
 
 class FindDelayStemSamples:
     __slots__ = [
         "stem_audio", "mix_audio",
-        "start_i", "interval_len", "num_of_iterations_per_guess",
-        "inner_grain_len",
+        "start_i", "num_of_iterations_per_guess",
+        "inner_grain_len", "interval_len", "overlap",
         "first_guess", "first_guess_add", "min_guess_diff",
         "max_abs_eq_profile",
         "intermediate_a", "intermediate_b", "intermediate_c",
@@ -23,8 +24,8 @@ class FindDelayStemSamples:
     def __init__(
         self, *,
         stem_audio, mix_audio,
-        start_i, interval_len, num_of_iterations_per_guess,
-        inner_grain_len,
+        start_i, num_of_iterations_per_guess,
+        inner_grain_len=None, interval_len=None, overlap=None,
         first_guess=0.0, first_guess_add=FIND_DELAY_STEM_SAMPLES_VAL_ADD,
         min_guess_diff=FIND_DELAY_STEM_SAMPLES_MIN_DIFF,
         max_abs_eq_profile=MAX_ABS_RESULT,
@@ -152,3 +153,19 @@ class FindDelayStemSeconds:
         logger=None
     ):
         +...
+
+
+
+        self, *,
+        stem_audio, mix_audio,
+        start_i, interval_len, num_of_iterations_per_guess,
+        inner_grain_len,
+        first_guess=0.0, first_guess_add=FIND_DELAY_STEM_SAMPLES_VAL_ADD,
+        min_guess_diff=FIND_DELAY_STEM_SAMPLES_MIN_DIFF,
+        max_abs_eq_profile=MAX_ABS_RESULT,
+        intermediate_a=None,  # numpy.float32 of size grain_len???NEED TO UPDATE THIS BIT
+        intermediate_b=None,  # numpy.complex64 Buffer of size grain_len
+        intermediate_c=None,  # numpy.complex64 Buffer of size grain_len
+        intermediate_d=None,  # bool of size grain_len
+        intermediate_e=None,  # numpy.complex64 Buffer of size grain_len
+        logger=None
