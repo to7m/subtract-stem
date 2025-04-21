@@ -3,7 +3,7 @@ from .defaults import (
     FIND_DELAY_STEM_SAMPLES_VAL_ADD, FIND_DELAY_STEM_SAMPLES_MIN_DIFF,
     FIND_DELAY_STEM_SECONDS_VAL_ADD, FIND_DELAY_STEM_SECONDS_MIN_DIFF
 )
-from ._sanitisation import sanitise_arg as san
+from ._sanitisation import sanitise_arg_or_args as san
 from ._sanitise_unique_arrays_of_shape import sanitise_unique_arrays_of_shape
 from .audio_grains import InnerGrainInfo
 
