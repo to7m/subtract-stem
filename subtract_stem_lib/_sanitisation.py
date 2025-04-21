@@ -226,4 +226,4 @@ def sanitise_quasi_buffer_data(val, name):
 
 
 _sanitisers = Sanitisers.from_current_module()
-sanitise_arg_or_args = _sanitisers.sanitise_arg_or_args
+sanitise = _sanitisers.sanitise

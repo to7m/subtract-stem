@@ -1,6 +1,6 @@
 from fractions import Fraction
 
-from ._sanitisation import sanitise_arg as san
+from ._sanitisation import sanitise as san
 
 
 class _InitialAstNode:

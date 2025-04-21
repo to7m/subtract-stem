@@ -148,7 +148,7 @@ class Sanitisers:
 
         return inst
 
-    def sanitise_arg_or_args(
+    def sanitise(
         self,
         name_or_names, sanitiser_name_or_names=None, *,
         val=_UNIQUE_NONE, vals=_UNIQUE_NONE
