@@ -1,6 +1,6 @@
 import numpy as np
 
-from .._sanitisation import sanitise_arg as san
+from .._sanitisation import sanitise as san
 
 
 def sanitise_a_b_out(a, b, out):

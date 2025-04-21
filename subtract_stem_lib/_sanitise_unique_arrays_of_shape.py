@@ -1,6 +1,6 @@
 import numpy as np
 
-from ._sanitisation import sanitise_arg as san
+from ._sanitisation import sanitise as san
 
 
 _dtypes_for_dtype_names = {

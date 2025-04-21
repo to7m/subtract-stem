@@ -1,6 +1,6 @@
 from operator import lt, gt
 
-from ._sanitisation import sanitise_args
+from ._sanitisation import sanitise as san
 
 
 _STRETCH = 10.0

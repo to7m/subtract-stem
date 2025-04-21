@@ -1,7 +1,7 @@
 import numpy as np
 
 from ..defaults import MAX_ABS_RESULT
-from .._sanitisation import sanitise_arg as san
+from .._sanitisation import sanitise as san
 from .._sanitise_unique_arrays_of_shape import sanitise_unique_arrays_of_shape
 
 
